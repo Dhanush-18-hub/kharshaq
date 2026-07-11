@@ -1,0 +1,78 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --color-primary-green: #2E7D32;
+  --color-dark-green: #1B5E20;
+  --color-accent-green: #4CAF50;
+  --color-light-green: #F4FAF2;
+  --color-brand-bg: #FAFAF8;
+  --color-border-color: #E8ECE8;
+
+  --font-sans: 'Inter', sans-serif;
+
+  --shadow-premium: 0 10px 40px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 4px 20px rgba(0, 0, 0, 0.03);
+}
+
+:root {
+  font-family: 'Inter', sans-serif;
+  background-color: #FAFAF8;
+}
+
+body {
+  margin: 0;
+  background-color: #FAFAF8;
+  color: #333333;
+  overflow-x: hidden;
+}
+
+/* Custom scrollbar for premium feel */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #FAFAF8;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #C4C4C0;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A0A09B;
+}
+
+/* Custom animations helper */
+.smooth-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Glow highlight effect for searched product */
+@keyframes pulse-highlight {
+  0% {
+    box-shadow: 0 0 0 0 rgba(46, 125, 50, 0.4);
+    border-color: #2E7D32;
+    transform: scale(1);
+  }
+
+  50% {
+    box-shadow: 0 0 0 12px rgba(46, 125, 50, 0.2);
+    border-color: #1B5E20;
+    transform: scale(1.03);
+  }
+
+  100% {
+    box-shadow: 0 0 0 0 rgba(46, 125, 50, 0);
+    border-color: #E8ECE8;
+    transform: scale(1);
+  }
+}
+
+.product-highlight {
+  animation: pulse-highlight 2s ease-in-out infinite;
+  z-index: 10;
+  border-width: 2px !important;
+}
