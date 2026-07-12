@@ -360,12 +360,12 @@ export default function CategoryPage({ type, addToCart, getItemQuantity, updateQ
               </button>
 
               {/* Product Image */}
-              <div className={`bg-[#FAFAF9]/60 rounded-2xl flex items-center justify-center p-4 overflow-hidden relative ${viewMode === 'grid' ? 'w-full aspect-square mb-4' : 'w-[140px] h-[140px] shrink-0'
+              <div className={`bg-gray-50 rounded-2xl overflow-hidden relative ${viewMode === 'grid' ? 'w-full aspect-square mb-4' : 'w-[140px] h-[140px] shrink-0'
                 }`}>
                 <img
                   src={prod.image}
                   alt={prod.name}
-                  className="max-h-[120px] object-cover rounded-full mix-blend-multiply group-hover:scale-106 transition-transform duration-300"
+                  className="w-full h-full object-cover group-hover:scale-106 transition-transform duration-300"
                 />
               </div>
 

@@ -333,7 +333,7 @@ export default function MyOrders({ addToCart, getItemQuantity, updateQuantity })
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
               
               {/* Orders List */}
-              <div className="lg:col-span-8 flex flex-col gap-6">
+              <div className="lg:col-span-8 flex flex-col gap-6 max-h-[650px] overflow-y-auto pr-3.5 scrollbar-thin">
                 {filteredOrders.length === 0 ? (
                   <div className="bg-white border border-border-color rounded-3xl p-12 text-center shadow-card select-none">
                     <div className="w-16 h-16 bg-light-green text-primary-green rounded-full flex items-center justify-center mx-auto mb-5">

@@ -361,11 +361,11 @@ export default function MyWishlist({ wishlist, toggleWishlist, addToCart, getIte
                       </button>
 
                       {/* Product Image */}
-                      <div className="w-full h-[120px] bg-[#FAFAF9]/60 rounded-xl flex items-center justify-center p-3 mb-3 overflow-hidden relative">
+                      <div className="w-full h-[120px] bg-gray-50 rounded-xl mb-3 overflow-hidden relative">
                         <img
                           src={product.image}
                           alt={product.name}
-                          className="max-h-[100px] object-contain rounded-full mix-blend-multiply group-hover:scale-105 transition-transform duration-300"
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
                       </div>
 

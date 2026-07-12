@@ -99,11 +99,11 @@ export default function BestSellers({ addToCart, getItemQuantity, updateQuantity
                 </div>
 
                 {/* Product Image */}
-                <div className="w-full aspect-square bg-[#FAFAF9]/60 rounded-2xl flex items-center justify-center p-4 mb-4 overflow-hidden relative">
+                <div className="w-full aspect-square bg-gray-50 rounded-2xl mb-4 overflow-hidden relative">
                   <img
                     src={product.image}
                     alt={product.name}
-                    className="max-h-[150px] object-cover rounded-full mix-blend-multiply group-hover:scale-106 transition-transform duration-300"
+                    className="w-full h-full object-cover group-hover:scale-106 transition-transform duration-300"
                   />
                 </div>
 
