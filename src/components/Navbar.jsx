@@ -402,7 +402,7 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
                         onClick={() => {
                           logout();
                           setDropdownOpen(false);
-                          navigate('/');
+                          navigate('/login');
                         }}
                         className="w-full flex items-center gap-3.5 px-3.5 py-2.5 rounded-xl hover:bg-red-50 text-[13.5px] font-black text-red-600 cursor-pointer transition-colors"
                       >
@@ -574,7 +574,7 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
                     onClick={() => {
                       logout();
                       setMobileMenuOpen(false);
-                      navigate('/');
+                      navigate('/login');
                     }}
                     className="w-full py-3 mt-2 bg-red-50 text-red-600 font-bold text-[15px] rounded-[14px] hover:bg-red-100 transition-colors cursor-pointer"
                   >

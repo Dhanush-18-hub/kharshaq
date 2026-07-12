@@ -425,7 +425,9 @@ export function AuthProvider({
     if (storedToken) {
       try {
         const res = await api.get('/api/user/profile');
-        if (res.data && res.data.user) {
+        // Ensure token wasn't cleared (user logged out) while request was in flight
+        const activeToken = localStorage.getItem('karshaq_token') || sessionStorage.getItem('karshaq_token');
+        if (activeToken && res.data && res.data.user) {
           setUser(res.data.user);
           return res.data.user;
         }

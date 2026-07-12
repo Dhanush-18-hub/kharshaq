@@ -86,6 +86,7 @@ export default function Auth({ initialMode = 'login' }) {
   const [resendCooldown, setResendCooldown] = useState(0);
   const [langDropdownOpen, setLangDropdownOpen] = useState(false);
   const [selectedLang, setSelectedLang] = useState('English');
+  const [isGoogleAvailable, setIsGoogleAvailable] = useState(false);
 
   // Cooldown countdown timer
   useEffect(() => {
@@ -121,6 +122,7 @@ export default function Auth({ initialMode = 'login' }) {
         });
         
         setTimeout(() => {
+          let loaded = false;
           const googleBtnLogin = document.getElementById('google-btn-login');
           if (googleBtnLogin) {
             window.google.accounts.id.renderButton(googleBtnLogin, {
@@ -128,6 +130,7 @@ export default function Auth({ initialMode = 'login' }) {
               size: 'large',
               width: googleBtnLogin.offsetWidth || 240
             });
+            loaded = true;
           }
           const googleBtnSignup = document.getElementById('google-btn-signup');
           if (googleBtnSignup) {
@@ -136,6 +139,10 @@ export default function Auth({ initialMode = 'login' }) {
               size: 'large',
               width: googleBtnSignup.offsetWidth || 240
             });
+            loaded = true;
+          }
+          if (loaded) {
+            setIsGoogleAvailable(true);
           }
         }, 150);
       }
@@ -478,7 +485,7 @@ export default function Auth({ initialMode = 'login' }) {
                   {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
                     <div 
                       id="google-btn-signup"
-                      className="absolute inset-0 opacity-0 cursor-pointer pointer-events-auto [&_iframe]:cursor-pointer [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:opacity-0"
+                      className={`absolute inset-0 opacity-0 cursor-pointer ${isGoogleAvailable ? 'pointer-events-auto' : 'pointer-events-none'}`}
                     />
                   )}
                 </div>
@@ -644,7 +651,7 @@ export default function Auth({ initialMode = 'login' }) {
                     {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
                       <div 
                         id="google-btn-login"
-                        className="absolute inset-0 opacity-0 cursor-pointer pointer-events-auto [&_iframe]:cursor-pointer [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:opacity-0"
+                        className={`absolute inset-0 opacity-0 cursor-pointer ${isGoogleAvailable ? 'pointer-events-auto' : 'pointer-events-none'}`}
                       />
                     )}
                   </div>

@@ -598,42 +598,7 @@ function AppContent({
 }
 
 export default function App() {
-  // Local Cart State inside App so we can pass setter to AuthProvider
-  const [cartItems, setCartItems] = useState([
-    {
-      id: 'f1',
-      name: 'Red Kashmir Apples',
-      weight: '1 kg',
-      price: 149,
-      originalPrice: 199,
-      image: '/product_apples.png',
-      badge: 'Fresh & Juicy',
-      source: 'Farm Fresh',
-      quantity: 1
-    },
-    {
-      id: 'f2',
-      name: 'Banana (Robusta)',
-      weight: '1 dozen',
-      price: 59,
-      originalPrice: 79,
-      image: '/product_bananas.png',
-      badge: 'Naturally Sweet',
-      source: 'Farm Fresh',
-      quantity: 1
-    },
-    {
-      id: 'f5',
-      name: 'Pomegranate',
-      weight: '1 kg',
-      price: 129,
-      originalPrice: 179,
-      image: '/product_pomegranate.png',
-      badge: 'Rich in Antioxidants',
-      source: 'Farm Fresh',
-      quantity: 1
-    }
-  ]);
+  const [cartItems, setCartItems] = useState([]);
 
   const [wishlist, setWishlist] = useState([]);
 
