@@ -299,8 +299,8 @@ export default function MyWishlist({ wishlist, toggleWishlist, addToCart, getIte
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
                   className={`pb-3 px-1 text-[14px] font-extrabold transition-all cursor-pointer border-b-2 ${activeTab === tab.id
-                      ? 'border-primary-green text-primary-green font-black'
-                      : 'border-transparent text-gray-400 hover:text-gray-600'
+                    ? 'border-primary-green text-primary-green font-black'
+                    : 'border-transparent text-gray-400 hover:text-gray-600'
                     }`}
                 >
                   {tab.label}

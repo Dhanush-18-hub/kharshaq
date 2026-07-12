@@ -8,10 +8,10 @@ export default function Categories({ setActiveTab }) {
   const dynamicCategories = categories && categories.length > 0 ? categories.map(cat => {
     let tabId = 'Fruits';
     const catNameLower = cat.name.toLowerCase();
-    if (catNameLower.includes('fruit')) tabId = 'Fruits';
+    if (catNameLower.includes('dry')) tabId = 'Dry Fruits';
+    else if (catNameLower.includes('fruit')) tabId = 'Fruits';
     else if (catNameLower.includes('veg')) tabId = 'Vegetables';
     else if (catNameLower.includes('spice')) tabId = 'Spices';
-    else if (catNameLower.includes('dry')) tabId = 'Dry Fruits';
     else if (catNameLower.includes('other')) tabId = 'Offers';
 
     return {

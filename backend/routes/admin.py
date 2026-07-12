@@ -78,14 +78,14 @@ def get_stats():
             for item in o.get('items', []):
                 cat = item.get('category', 'others').lower()
                 # Map category from frontend naming
-                if 'fruit' in cat:
+                if 'dry' in cat:
+                    cat = 'dryfruits'
+                elif 'fruit' in cat:
                     cat = 'fruits'
                 elif 'veggie' in cat or 'vegetable' in cat:
                     cat = 'vegetables'
                 elif 'spice' in cat:
                     cat = 'spices'
-                elif 'dry' in cat:
-                    cat = 'dryfruits'
                 else:
                     cat = 'others'
                     

@@ -8,6 +8,8 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [productsDropdownOpen, setProductsDropdownOpen] = useState(false);
+  const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
 
   const { user, logout, products, categories } = useAuth();
   const navigate = useNavigate();
@@ -28,21 +30,19 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
     : allProducts.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   // Derive categories dynamically from database categories
-  const dynamicCategories = categories && categories.length > 0
+  const dynamicCategoriesList = categories && categories.length > 0
     ? categories
-        .filter(c => c.name.toLowerCase() !== 'others') // Hide generic 'others' tab from Navbar to prevent clutter
-        .map(c => {
-          if (c.name.toLowerCase() === 'dryfruits') return 'Dry Fruits';
-          return c.name.charAt(0).toUpperCase() + c.name.slice(1);
-        })
-    : ['Fruits', 'Vegetables', 'Spices', 'Dry Fruits'];
-
-  const navItems = [
-    'Home',
-    ...dynamicCategories,
-    'Offers',
-    'About Us'
-  ];
+        .map(c => ({
+          name: c.name.toLowerCase() === 'dryfruits' ? 'Dry Fruits' : c.name.charAt(0).toUpperCase() + c.name.slice(1),
+          id: c.name.toLowerCase().replace(/\s+/g, ''),
+          image: c.image || '/category_fruits.png'
+        }))
+    : [
+        { name: 'Fruits', id: 'fruits', image: '/category_fruits.png' },
+        { name: 'Vegetables', id: 'vegetables', image: '/category_vegetables.png' },
+        { name: 'Spices', id: 'spices', image: '/category_spices.png' },
+        { name: 'Dry Fruits', id: 'dryfruits', image: '/category_dryfruits.png' }
+      ];
 
   return (
     <header className="w-full fixed top-0 left-0 z-50 bg-white">
@@ -72,19 +72,90 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
 
           {/* Center: Navigation Links (Desktop) */}
           <nav className="hidden lg:flex items-center gap-8">
-            {navItems.map((item) => (
+            {/* Home */}
+            <button
+              onClick={() => setActiveTab('Home')}
+              className={`relative py-2 text-[16px] font-semibold transition-colors duration-200 cursor-pointer ${activeTab === 'Home' ? 'text-primary-green font-bold' : 'text-gray-600 hover:text-primary-green'}`}
+            >
+              Home
+              {activeTab === 'Home' && (
+                <span className="absolute bottom-[-18px] left-0 right-0 h-[3px] bg-primary-green rounded-full" />
+              )}
+            </button>
+
+            {/* Products (with Dropdown) */}
+            <div
+              className="relative py-2"
+              onMouseEnter={() => setProductsDropdownOpen(true)}
+              onMouseLeave={() => setProductsDropdownOpen(false)}
+            >
               <button
-                key={item}
-                onClick={() => setActiveTab(item)}
-                className={`relative py-2 text-[16px] font-semibold transition-colors duration-200 cursor-pointer ${activeTab === item ? 'text-primary-green font-bold' : 'text-gray-600 hover:text-primary-green'
-                  }`}
+                className={`flex items-center gap-1 text-[16px] font-semibold transition-colors duration-200 cursor-pointer ${activeTab === 'Products' || dynamicCategoriesList.some(cat => activeTab === cat.name) ? 'text-primary-green font-bold' : 'text-gray-600 hover:text-primary-green'}`}
               >
-                {item}
-                {activeTab === item && (
-                  <span className="absolute bottom-[-18px] left-0 right-0 h-[3px] bg-primary-green rounded-full" />
-                )}
+                Products <ChevronDown className="w-4 h-4" />
               </button>
-            ))}
+
+              {productsDropdownOpen && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-[100%] pt-2 w-[220px] z-50">
+                  <div className="bg-white border border-border-color rounded-2xl shadow-premium p-2 flex flex-col gap-1">
+                    {dynamicCategoriesList.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => {
+                          setActiveTab(cat.name);
+                          setProductsDropdownOpen(false);
+                        }}
+                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-light-green/50 rounded-xl text-left text-[14.5px] font-bold text-gray-700 hover:text-primary-green transition-all cursor-pointer group"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center p-1 border border-gray-100 shrink-0">
+                          <img src={cat.image} alt={cat.name} className="max-h-6 object-contain mix-blend-multiply rounded-full" />
+                        </div>
+                        <span className="group-hover:translate-x-1 transition-transform">{cat.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Wishlist */}
+            <button
+              onClick={() => {
+                if (user) {
+                  setActiveTab('Wishlist');
+                } else {
+                  navigate('/login');
+                }
+              }}
+              className={`relative py-2 text-[16px] font-semibold transition-colors duration-200 cursor-pointer ${activeTab === 'Wishlist' ? 'text-primary-green font-bold' : 'text-gray-600 hover:text-primary-green'}`}
+            >
+              Wishlist
+              {activeTab === 'Wishlist' && (
+                <span className="absolute bottom-[-18px] left-0 right-0 h-[3px] bg-primary-green rounded-full" />
+              )}
+            </button>
+
+            {/* Offers */}
+            <button
+              onClick={() => setActiveTab('Offers')}
+              className={`relative py-2 text-[16px] font-semibold transition-colors duration-200 cursor-pointer ${activeTab === 'Offers' ? 'text-primary-green font-bold' : 'text-gray-600 hover:text-primary-green'}`}
+            >
+              Offers
+              {activeTab === 'Offers' && (
+                <span className="absolute bottom-[-18px] left-0 right-0 h-[3px] bg-primary-green rounded-full" />
+              )}
+            </button>
+
+            {/* About Us */}
+            <button
+              onClick={() => setActiveTab('About Us')}
+              className={`relative py-2 text-[16px] font-semibold transition-colors duration-200 cursor-pointer ${activeTab === 'About Us' ? 'text-primary-green font-bold' : 'text-gray-600 hover:text-primary-green'}`}
+            >
+              About Us
+              {activeTab === 'About Us' && (
+                <span className="absolute bottom-[-18px] left-0 right-0 h-[3px] bg-primary-green rounded-full" />
+              )}
+            </button>
           </nav>
 
           {/* Right Side: Location, Icons, Buttons (Desktop) */}
@@ -402,20 +473,81 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
             </div>
 
             {/* Mobile Nav Links */}
-            <nav className="flex flex-col gap-4 mt-2">
-              {navItems.map((item) => (
+            <nav className="flex flex-col gap-2.5 mt-2">
+              {/* Home */}
+              <button
+                onClick={() => {
+                  setActiveTab('Home');
+                  setMobileMenuOpen(false);
+                }}
+                className={`text-left text-[16px] py-2 font-semibold ${activeTab === 'Home' ? 'text-primary-green border-l-4 border-primary-green pl-3' : 'text-gray-600 hover:text-primary-green pl-1'} transition-all`}
+              >
+                Home
+              </button>
+
+              {/* Products (Accordion) */}
+              <div>
                 <button
-                  key={item}
-                  onClick={() => {
-                    setActiveTab(item);
-                    setMobileMenuOpen(false);
-                  }}
-                  className={`text-left text-[16px] py-2 font-semibold ${activeTab === item ? 'text-primary-green border-l-4 border-primary-green pl-3' : 'text-gray-600 hover:text-primary-green pl-1'
-                    } transition-all`}
+                  onClick={() => setMobileProductsOpen(!mobileProductsOpen)}
+                  className={`w-full flex items-center justify-between text-left text-[16px] py-2 font-semibold ${activeTab === 'Products' || dynamicCategoriesList.some(cat => activeTab === cat.name) ? 'text-primary-green pl-3 border-l-4 border-primary-green' : 'text-gray-600 hover:text-primary-green pl-1'} transition-all`}
                 >
-                  {item}
+                  <span>Products</span>
+                  <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${mobileProductsOpen ? 'rotate-180' : ''}`} />
                 </button>
-              ))}
+                {mobileProductsOpen && (
+                  <div className="pl-6 flex flex-col gap-2 mt-2 border-l border-gray-100 ml-3">
+                    {dynamicCategoriesList.map((cat) => (
+                      <button
+                        key={cat.id}
+                        onClick={() => {
+                          setActiveTab(cat.name);
+                          setMobileMenuOpen(false);
+                        }}
+                        className="text-left text-[14.5px] py-1.5 font-semibold text-gray-500 hover:text-primary-green transition-all"
+                      >
+                        {cat.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Wishlist */}
+              <button
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (user) {
+                    setActiveTab('Wishlist');
+                  } else {
+                    navigate('/login');
+                  }
+                }}
+                className={`text-left text-[16px] py-2 font-semibold ${activeTab === 'Wishlist' ? 'text-primary-green border-l-4 border-primary-green pl-3' : 'text-gray-600 hover:text-primary-green pl-1'} transition-all`}
+              >
+                Wishlist
+              </button>
+
+              {/* Offers */}
+              <button
+                onClick={() => {
+                  setActiveTab('Offers');
+                  setMobileMenuOpen(false);
+                }}
+                className={`text-left text-[16px] py-2 font-semibold ${activeTab === 'Offers' ? 'text-primary-green border-l-4 border-primary-green pl-3' : 'text-gray-600 hover:text-primary-green pl-1'} transition-all`}
+              >
+                Offers
+              </button>
+
+              {/* About Us */}
+              <button
+                onClick={() => {
+                  setActiveTab('About Us');
+                  setMobileMenuOpen(false);
+                }}
+                className={`text-left text-[16px] py-2 font-semibold ${activeTab === 'About Us' ? 'text-primary-green border-l-4 border-primary-green pl-3' : 'text-gray-600 hover:text-primary-green pl-1'} transition-all`}
+              >
+                About Us
+              </button>
             </nav>
 
             {/* Mobile Actions */}

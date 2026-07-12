@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route, useLocation, useNavigate, Navigate } from 'react-router-dom';
+import { Routes, Route, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth, api } from './context/AuthContext';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -27,6 +27,12 @@ import MyOrders from './components/MyOrders';
 import { Toaster, toast } from 'react-hot-toast';
 import AdminRoute from './components/AdminRoute';
 import AdminDashboard from './components/Admin/AdminDashboard';
+
+function CategoryRouteWrapper(props) {
+  const { categoryName } = useParams();
+  const cleanCat = categoryName ? categoryName.toLowerCase().replace(/\s+/g, '') : '';
+  return <CategoryPage type={cleanCat} {...props} />;
+}
 
 function AppContent({ 
   cartItems, 
@@ -56,7 +62,7 @@ function AppContent({
   const [selectedProductId, setSelectedProductId] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, token, syncCartItems } = useAuth();
+  const { user, token, syncCartItems, categories } = useAuth();
 
   // Sync cart items to database automatically when user is logged in
   useEffect(() => {
@@ -430,15 +436,21 @@ function AppContent({
   const getActiveTab = () => {
     const path = location.pathname;
     if (path === '/') return 'Home';
-    if (path === '/fruits') return 'Fruits';
-    if (path === '/vegetables') return 'Vegetables';
-    if (path === '/spices') return 'Spices';
-    if (path === '/dryfruits') return 'Dry Fruits';
     if (path === '/offers') return 'Offers';
     if (path === '/about-us') return 'About Us';
     if (path === '/cart') return 'Cart';
     if (path === '/login') return 'Login';
     if (path === '/signup') return 'SignUp';
+    if (path === '/wishlist') return 'Wishlist';
+    
+    const cleanPath = path.replace('/', '').toLowerCase().trim();
+    const categoriesNames = categories && categories.length > 0
+      ? categories.map(c => c.name.toLowerCase().replace(/\s+/g, ''))
+      : ['fruits', 'vegetables', 'spices', 'dryfruits'];
+      
+    if (categoriesNames.includes(cleanPath)) {
+      return 'Products';
+    }
     return 'Home';
   };
 
@@ -447,17 +459,14 @@ function AppContent({
     const cleanTab = (tab || '').trim().toLowerCase().replace(/\s+/g, '');
     const tabToPathMap = {
       'home': '/',
-      'fruits': '/fruits',
-      'vegetables': '/vegetables',
-      'spices': '/spices',
-      'dryfruits': '/dryfruits',
+      'wishlist': '/wishlist',
       'offers': '/offers',
       'aboutus': '/about-us',
       'cart': '/cart',
       'login': '/login',
       'signup': '/signup'
     };
-    navigate(tabToPathMap[cleanTab] || '/');
+    navigate(tabToPathMap[cleanTab] || `/${cleanTab}`);
   };
 
   const isAdminPage = location.pathname.startsWith('/admin');
@@ -494,58 +503,7 @@ function AppContent({
             </>
           } />
 
-          {/* Category Pages */}
-          <Route path="/fruits" element={
-            <CategoryPage 
-              type="fruits" 
-              addToCart={addToCart} 
-              getItemQuantity={getItemQuantity} 
-              updateQuantity={updateQuantity} 
-              selectedProductId={selectedProductId}
-              setSelectedProductId={setSelectedProductId}
-              toggleWishlist={toggleWishlist}
-              isInWishlist={isInWishlist}
-            />
-          } />
-          
-          <Route path="/vegetables" element={
-            <CategoryPage 
-              type="vegetables" 
-              addToCart={addToCart} 
-              getItemQuantity={getItemQuantity} 
-              updateQuantity={updateQuantity} 
-              selectedProductId={selectedProductId}
-              setSelectedProductId={setSelectedProductId}
-              toggleWishlist={toggleWishlist}
-              isInWishlist={isInWishlist}
-            />
-          } />
-          
-          <Route path="/spices" element={
-            <CategoryPage 
-              type="spices" 
-              addToCart={addToCart} 
-              getItemQuantity={getItemQuantity} 
-              updateQuantity={updateQuantity} 
-              selectedProductId={selectedProductId}
-              setSelectedProductId={setSelectedProductId}
-              toggleWishlist={toggleWishlist}
-              isInWishlist={isInWishlist}
-            />
-          } />
-          
-          <Route path="/dryfruits" element={
-            <CategoryPage 
-              type="dryfruits" 
-              addToCart={addToCart} 
-              getItemQuantity={getItemQuantity} 
-              updateQuantity={updateQuantity} 
-              selectedProductId={selectedProductId}
-              setSelectedProductId={setSelectedProductId}
-              toggleWishlist={toggleWishlist}
-              isInWishlist={isInWishlist}
-            />
-          } />
+
 
           {/* Core Routes */}
           <Route path="/offers" element={<Offers setActiveTab={handleSetActiveTab} />} />
@@ -658,6 +616,19 @@ function AppContent({
             <AdminRoute>
               <AdminDashboard />
             </AdminRoute>
+          } />
+
+           {/* Dynamic Category Page Route */}
+          <Route path="/:categoryName" element={
+            <CategoryRouteWrapper
+              addToCart={addToCart} 
+              getItemQuantity={getItemQuantity} 
+              updateQuantity={updateQuantity} 
+              selectedProductId={selectedProductId}
+              setSelectedProductId={setSelectedProductId}
+              toggleWishlist={toggleWishlist}
+              isInWishlist={isInWishlist}
+            />
           } />
 
           {/* Catch-all fallback redirect */}

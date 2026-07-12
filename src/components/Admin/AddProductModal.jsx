@@ -89,8 +89,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Name */}
             <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Product Name *</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 placeholder="e.g. Alphonso Mangoes"
                 value={name}
@@ -102,7 +102,7 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Description */}
             <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Description</label>
-              <textarea 
+              <textarea
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition font-sans"
                 placeholder="Details of freshness, farming source or taste notes..."
                 rows={3}
@@ -114,7 +114,7 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Category */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Category *</label>
-              <select 
+              <select
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
@@ -130,8 +130,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Subcategory */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Subcategory</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 placeholder="e.g. citrus, leafy, powders..."
                 value={subcat}
@@ -142,8 +142,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Price */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Price (₹) *</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 placeholder="149"
                 value={price}
@@ -155,8 +155,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Original Price */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Original Price (₹)</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 placeholder="199"
                 value={originalPrice}
@@ -167,8 +167,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Image URL */}
             <div className="sm:col-span-2">
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Image URL</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 placeholder="https://images.unsplash.com/..."
                 value={image}
@@ -179,8 +179,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Stock */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Initial Stock</label>
-              <input 
-                type="number" 
+              <input
+                type="number"
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 value={stock}
                 onChange={(e) => setStock(e.target.value)}
@@ -190,8 +190,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Weight */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Weight / Unit Spec</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 placeholder="e.g. 1 kg, 500 g, 4 pcs"
                 value={weight}
@@ -202,8 +202,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* SKU */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">SKU ID</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 placeholder="e.g. KSQ-FRUIT-09"
                 value={sku}
@@ -214,8 +214,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             {/* Tags */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Tags (Comma Separated)</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 placeholder="e.g. sweet, premium, seasonal"
                 value={tags}
@@ -229,8 +229,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
             <h4 className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-2.5">Catalog Placement & Badges</h4>
             <div className="grid grid-cols-2 gap-4">
               <label className="flex items-center gap-3 p-3 border border-gray-100/60 rounded-xl bg-gray-50/20 hover:bg-gray-50/50 transition cursor-pointer select-none">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4.5 h-4.5"
                   checked={organic}
                   onChange={(e) => setOrganic(e.target.checked)}
@@ -242,8 +242,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
               </label>
 
               <label className="flex items-center gap-3 p-3 border border-gray-100/60 rounded-xl bg-gray-50/20 hover:bg-gray-50/50 transition cursor-pointer select-none">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4.5 h-4.5"
                   checked={bestSeller}
                   onChange={(e) => setBestSeller(e.target.checked)}
@@ -255,8 +255,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
               </label>
 
               <label className="flex items-center gap-3 p-3 border border-gray-100/60 rounded-xl bg-gray-50/20 hover:bg-gray-50/50 transition cursor-pointer select-none">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4.5 h-4.5"
                   checked={featured}
                   onChange={(e) => setFeatured(e.target.checked)}
@@ -268,8 +268,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
               </label>
 
               <label className="flex items-center gap-3 p-3 border border-gray-100/60 rounded-xl bg-gray-50/20 hover:bg-gray-50/50 transition cursor-pointer select-none">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4.5 h-4.5"
                   checked={availability}
                   onChange={(e) => setAvailability(e.target.checked)}
@@ -284,15 +284,15 @@ export default function AddProductModal({ product, onClose, refresh }) {
 
           {/* Footer Actions */}
           <div className="flex justify-end gap-3.5 border-t border-gray-50 pt-5 select-none">
-            <button 
-              type="button" 
+            <button
+              type="button"
               onClick={onClose}
               className="px-5 py-2.5 border border-gray-100 rounded-xl text-xs font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition cursor-pointer"
             >
               Cancel
             </button>
-            <button 
-              type="submit" 
+            <button
+              type="submit"
               disabled={submitting}
               className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 disabled:opacity-50 transition active:scale-95 cursor-pointer flex items-center gap-1.5"
             >

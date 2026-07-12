@@ -161,7 +161,7 @@ def create_app():
                 {'name': 'vegetables', 'image': '/category_vegetables.png'},
                 {'name': 'spices', 'image': '/category_spices.png'},
                 {'name': 'dryfruits', 'image': '/category_dryfruits.png'},
-                {'name': 'others', 'image': '/category_fruits.png'}
+                {'name': 'others', 'image': '/category_combooffers.png'}
             ]
             for c in SEED_CATEGORIES:
                 cat = Category(name=c['name'], image=c['image'])
