@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from backend.models import db, Product, Category, Offer
+from backend.models import db, Product, Category, Offer, SubCategory
 
 products_bp = Blueprint('products_bp', __name__)
 
@@ -51,17 +51,31 @@ def get_product(id):
 
 @products_bp.route('/categories', methods=['GET'])
 def list_categories():
-    categories = Category.query.all()
+    include_all = request.args.get('all', 'false').lower() == 'true'
+    if include_all:
+        categories = Category.query.order_by(Category.navbarOrder.asc()).all()
+    else:
+        categories = Category.query.filter_by(isVisible=True).order_by(Category.navbarOrder.asc()).all()
+        
     output = []
     for c in categories:
-        count = Product.query.filter(Product.category.ilike(c.name)).count()
-        output.append({
-            'name': c.name,
-            'image': c.image,
-            'count': count,
-            'activeOffers': 0
-        })
+        count = Product.query.filter(Product.category.ilike(c.slug)).count()
+        cat_json = c.to_json()
+        cat_json['count'] = count
+        cat_json['activeOffers'] = 0
+        output.append(cat_json)
     return jsonify(output), 200
+
+@products_bp.route('/category/<slug>', methods=['GET'])
+def get_category_by_slug(slug):
+    cat = Category.query.filter_by(slug=slug).first()
+    if not cat:
+        return jsonify({'error': 'Category not found.'}), 404
+        
+    products = Product.query.filter(Product.category.ilike(slug)).all()
+    cat_json = cat.to_json()
+    cat_json['products'] = [p.to_json() for p in products]
+    return jsonify(cat_json), 200
 
 @products_bp.route('/offers', methods=['GET'])
 def list_offers():

@@ -121,13 +121,80 @@ class Product(db.Model):
 
 class Category(db.Model):
     __tablename__ = 'categories'
-    name = db.Column(db.String(50), primary_key=True)
-    image = db.Column(db.Text, nullable=True)
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), unique=True, nullable=False)
+    image = db.Column(db.Text, nullable=True) # for compatibility
+    
+    # Hero cms fields
+    heroTitle = db.Column(db.Text, nullable=True)
+    heroSubtitle = db.Column(db.Text, nullable=True)
+    heroBadge = db.Column(db.String(100), nullable=True)
+    heroImage = db.Column(db.Text, nullable=True)
+    backgroundImage = db.Column(db.Text, nullable=True)
+    backgroundColor = db.Column(db.String(50), nullable=True)
+    gradient = db.Column(db.Text, nullable=True)
+    buttonText = db.Column(db.String(100), nullable=True)
+    buttonLink = db.Column(db.Text, nullable=True)
+    
+    # SEO fields
+    metaTitle = db.Column(db.Text, nullable=True)
+    metaDescription = db.Column(db.Text, nullable=True)
+    
+    # config fields
+    navbarOrder = db.Column(db.Integer, default=0)
+    isVisible = db.Column(db.Boolean, default=True)
+    
+    # features and promos stored as JSON
+    features = db.Column(db.JSON, nullable=True) # list of {title, desc, icon}
+    promos = db.Column(db.JSON, nullable=True) # list of {title, desc, image, btnText, bg}
 
     def to_json(self):
         return {
+            'id': self.id,
             'name': self.name,
-            'image': self.image
+            'slug': self.slug,
+            'image': self.image,
+            'heroTitle': self.heroTitle,
+            'heroSubtitle': self.heroSubtitle,
+            'heroBadge': self.heroBadge,
+            'heroImage': self.heroImage,
+            'backgroundImage': self.backgroundImage,
+            'backgroundColor': self.backgroundColor,
+            'gradient': self.gradient,
+            'buttonText': self.buttonText,
+            'buttonLink': self.buttonLink,
+            'metaTitle': self.metaTitle,
+            'metaDescription': self.metaDescription,
+            'navbarOrder': self.navbarOrder,
+            'isVisible': self.isVisible,
+            'features': self.features,
+            'promos': self.promos,
+            'subcategories': [sub.to_json() for sub in self.subcategories]
+        }
+
+class SubCategory(db.Model):
+    __tablename__ = 'subcategories'
+    id = db.Column(db.Integer, primary_key=True)
+    categoryId = db.Column(db.Integer, db.ForeignKey('categories.id', ondelete='CASCADE'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), nullable=False)
+    icon = db.Column(db.Text, nullable=True)
+    sortOrder = db.Column(db.Integer, default=0)
+    isVisible = db.Column(db.Boolean, default=True)
+
+    # Relationship
+    category = db.relationship('Category', backref=db.backref('subcategories', lazy=True, cascade='all, delete-orphan'))
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'categoryId': self.categoryId,
+            'name': self.name,
+            'slug': self.slug,
+            'icon': self.icon,
+            'sortOrder': self.sortOrder,
+            'isVisible': self.isVisible
         }
 
 class Offer(db.Model):

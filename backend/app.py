@@ -154,20 +154,134 @@ def create_app():
             print("Seeded database with initial products list.")
         
         # 3. Seed initial categories list if empty
-        from backend.models import Category
+        from backend.models import Category, SubCategory
         if Category.query.count() == 0:
+            default_features = [
+                {"title": "Farm Fresh", "desc": "Picked Daily", "icon": "Leaf"},
+                {"title": "No Chemicals", "desc": "100% Natural", "icon": "ShieldCheck"},
+                {"title": "Premium Quality", "desc": "Hand Selected", "icon": "Star"},
+                {"title": "Delivered Fresh", "desc": "At Your Doorstep", "icon": "Truck"}
+            ]
             SEED_CATEGORIES = [
-                {'name': 'fruits', 'image': '/category_fruits.png'},
-                {'name': 'vegetables', 'image': '/category_vegetables.png'},
-                {'name': 'spices', 'image': '/category_spices.png'},
-                {'name': 'dryfruits', 'image': '/category_dryfruits.png'},
-                {'name': 'others', 'image': '/category_combooffers.png'}
+                {
+                    'name': 'Fruits',
+                    'slug': 'fruits',
+                    'image': '/category_fruits.png',
+                    'heroBadge': '100% FARM FRESH',
+                    'heroTitle': "Nature's Sweetest Gift, Just for You",
+                    'heroSubtitle': 'Handpicked at peak ripeness from trusted farms. Enjoy the taste of real, natural fruits.',
+                    'heroImage': '/hero_fruits.png',
+                    'backgroundColor': '#F9FAF0',
+                    'features': default_features,
+                    'subcategories': [
+                        {"name": "All Fruits", "slug": "all", "icon": "/category_fruits.png"},
+                        {"name": "Apples", "slug": "apples", "icon": "/product_apples.png"},
+                        {"name": "Bananas", "slug": "bananas", "icon": "/product_bananas.png"},
+                        {"name": "Citrus", "slug": "citrus", "icon": "https://images.unsplash.com/photo-1547514701-42782101795e?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Berries", "slug": "berries", "icon": "https://images.unsplash.com/photo-1518635017498-87f514b751ba?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Mangoes", "slug": "mangoes", "icon": "/product_mango.png"},
+                        {"name": "Grapes", "slug": "grapes", "icon": "/product_grapes.png"},
+                        {"name": "Pomegranate", "slug": "pomegranate", "icon": "/product_pomegranate.png"}
+                    ]
+                },
+                {
+                    'name': 'Vegetables',
+                    'slug': 'vegetables',
+                    'image': '/category_vegetables.png',
+                    'heroBadge': '100% ORGANIC',
+                    'heroTitle': 'Fresh From Farms, Delivered with Care',
+                    'heroSubtitle': 'Directly sourced from the soil to protect nutrients and health. Clean, chemical-free greens for your table.',
+                    'heroImage': '/category_vegetables.png',
+                    'backgroundColor': '#FAFAF2',
+                    'features': default_features,
+                    'subcategories': [
+                        {"name": "All Veggies", "slug": "all", "icon": "https://images.unsplash.com/photo-1597362925123-77861d3fbac7?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Leafy Greens", "slug": "leafy", "icon": "https://images.unsplash.com/photo-1576045057995-568f588f82fb?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Tomatoes", "slug": "tomatoes", "icon": "https://images.unsplash.com/photo-1592924357228-91a4daadcfea?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Roots & Tubers", "slug": "roots", "icon": "https://images.unsplash.com/photo-1518977676601-b53f82aba655?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Exotics", "slug": "exotic", "icon": "https://images.unsplash.com/photo-1584269600464-37b1b58a9fe7?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Dairy & Tofu", "slug": "dairy", "icon": "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?auto=format&fit=crop&q=80&w=260"}
+                    ]
+                },
+                {
+                    'name': 'Spices',
+                    'slug': 'spices',
+                    'image': '/category_spices.png',
+                    'heroBadge': '100% PURE STONEGROUND',
+                    'heroTitle': 'Aromatic Spices, Rich in Tradition',
+                    'heroSubtitle': 'Bring authentic flavor and high medicinal value to your kitchen with our stone-ground, pure spices.',
+                    'heroImage': '/category_spices.png',
+                    'backgroundColor': '#FFFDEB',
+                    'features': default_features,
+                    'subcategories': [
+                        {"name": "All Spices", "slug": "all", "icon": "https://images.unsplash.com/photo-1596040033229-a9821ebd058d?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Powder Spices", "slug": "powders", "icon": "https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Whole Seeds", "slug": "seeds", "icon": "https://images.unsplash.com/photo-1509358271058-acd22cc93898?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Whole Pods", "slug": "pods", "icon": "https://images.unsplash.com/photo-1626132647523-66f5bf380027?auto=format&fit=crop&q=80&w=260"}
+                    ]
+                },
+                {
+                    'name': 'Dry Fruits',
+                    'slug': 'dryfruits',
+                    'image': '/category_dryfruits.png',
+                    'heroBadge': '100% PREMIUM QUALITY',
+                    'heroTitle': 'Premium Dry Fruits, Powerhouse of Energy',
+                    'heroSubtitle': 'Naturally dried, crunchy, and loaded with essential nutrients. Perfect daily snack for healthy lifestyles.',
+                    'heroImage': '/category_dryfruits.png',
+                    'backgroundColor': '#FFF5F6',
+                    'features': default_features,
+                    'subcategories': [
+                        {"name": "All Dry Fruits", "slug": "all", "icon": "https://images.unsplash.com/photo-1596547609652-9cf5d8d76921?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Nuts", "slug": "nuts", "icon": "https://images.unsplash.com/photo-1508061253366-f7da158b6d4b?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Raisins & Dates", "slug": "raisins", "icon": "https://images.unsplash.com/photo-1569596082827-c5e8990496cb?auto=format&fit=crop&q=80&w=260"}
+                    ]
+                },
+                {
+                    'name': 'Others',
+                    'slug': 'others',
+                    'image': '/category_combooffers.png',
+                    'heroBadge': 'DAILY ESSENTIALS',
+                    'heroTitle': 'Daily Grocery Needs & Extras',
+                    'heroSubtitle': 'Find other household needs, organic oils, pure honeys, and everyday kitchen essentials.',
+                    'heroImage': '/category_combooffers.png',
+                    'backgroundColor': '#FFFCEB',
+                    'features': default_features,
+                    'subcategories': [
+                        {"name": "All Others", "slug": "all", "icon": "https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?auto=format&fit=crop&q=80&w=260"},
+                        {"name": "Honey & Oils", "slug": "honey", "icon": "https://images.unsplash.com/photo-1587049352846-4a222e784d38?auto=format&fit=crop&q=80&w=260"}
+                    ]
+                }
             ]
             for c in SEED_CATEGORIES:
-                cat = Category(name=c['name'], image=c['image'])
+                cat = Category(
+                    name=c['name'],
+                    slug=c['slug'],
+                    image=c['image'],
+                    heroBadge=c['heroBadge'],
+                    heroTitle=c['heroTitle'],
+                    heroSubtitle=c['heroSubtitle'],
+                    heroImage=c['heroImage'],
+                    backgroundColor=c['backgroundColor'],
+                    buttonText='Shop Now',
+                    buttonLink=f'/category/{c["slug"]}',
+                    features=c['features'],
+                    promos=[]
+                )
                 db.session.add(cat)
+                db.session.flush()
+                
+                for idx, sub in enumerate(c['subcategories']):
+                    sc = SubCategory(
+                        categoryId=cat.id,
+                        name=sub['name'],
+                        slug=sub['slug'],
+                        icon=sub['icon'],
+                        sortOrder=idx,
+                        isVisible=True
+                    )
+                    db.session.add(sc)
             db.session.commit()
-            print("Seeded database with initial categories.")
+            print("Seeded database with initial categories & subcategories.")
 
         # 4. Seed initial offers list if empty
         from backend.models import Offer

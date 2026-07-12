@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
-from backend.models import db, User, Product, Category, Offer
+from backend.models import db, User, Product, Category, Offer, SubCategory
 from datetime import datetime, timedelta
 import random
 
@@ -498,24 +498,186 @@ def delete_coupon(code):
 def create_category():
     data = request.get_json() or {}
     name = data.get('name', '').strip()
-    image = data.get('image', '').strip()
+    image = data.get('image', '').strip() or '/category_fruits.png'
+    
     if not name:
         return jsonify({'error': 'Category name is required.'}), 400
-    
-    existing = Category.query.get(name)
-    if existing:
-        return jsonify({'error': 'Category already exists.'}), 400
         
-    cat = Category(name=name, image=image)
+    slug = data.get('slug', '').strip().lower().replace(' ', '-')
+    if not slug:
+        slug = name.lower().replace(' ', '-')
+        
+    existing = Category.query.filter_by(slug=slug).first() or Category.query.filter_by(name=name).first()
+    if existing:
+        return jsonify({'error': 'Category name or slug already exists.'}), 400
+        
+    default_features = [
+        {"title": "Farm Fresh", "desc": "Picked Daily", "icon": "Leaf"},
+        {"title": "No Chemicals", "desc": "100% Natural", "icon": "ShieldCheck"},
+        {"title": "Premium Quality", "desc": "Hand Selected", "icon": "Star"},
+        {"title": "Delivered Fresh", "desc": "At Your Doorstep", "icon": "Truck"}
+    ]
+        
+    cat = Category(
+        name=name,
+        slug=slug,
+        image=image,
+        heroBadge=data.get('heroBadge', '100% QUALITY ASSURED'),
+        heroTitle=data.get('heroTitle', f'Fresh {name} Catalog'),
+        heroSubtitle=data.get('heroSubtitle', f'Directly sourced premium {name.lower()} collection.'),
+        heroImage=data.get('heroImage', image),
+        backgroundImage=data.get('backgroundImage', ''),
+        backgroundColor=data.get('backgroundColor', '#FFFFFF'),
+        gradient=data.get('gradient', ''),
+        buttonText=data.get('buttonText', 'Explore More'),
+        buttonLink=data.get('buttonLink', f'/category/{slug}'),
+        metaTitle=data.get('metaTitle', name),
+        metaDescription=data.get('metaDescription', f'Premium {name} from Karshaq.'),
+        navbarOrder=int(data.get('navbarOrder', 0)),
+        isVisible=bool(data.get('isVisible', True)),
+        features=data.get('features', default_features),
+        promos=data.get('promos', [])
+    )
+    
     db.session.add(cat)
     db.session.commit()
+    
+    # Also seed a default "All" subcategory
+    sub = SubCategory(
+        categoryId=cat.id,
+        name=f"All {name}",
+        slug="all",
+        icon=image,
+        sortOrder=0,
+        isVisible=True
+    )
+    db.session.add(sub)
+    db.session.commit()
+    
     return jsonify({'message': 'Category created successfully', 'category': cat.to_json()}), 201
+
+@admin_bp.route('/categories/<name>', methods=['PUT'])
+def update_category(name):
+    cat = Category.query.filter_by(slug=name).first() or Category.query.filter_by(name=name).first() or Category.query.get(name)
+    if not cat:
+        return jsonify({'error': 'Category not found.'}), 404
+        
+    data = request.get_json() or {}
+    
+    # Update general
+    if 'name' in data:
+        cat.name = data['name'].strip()
+    if 'slug' in data:
+        slug_val = data['slug'].strip().lower().replace(' ', '-')
+        if slug_val != cat.slug:
+            existing = Category.query.filter_by(slug=slug_val).first()
+            if existing:
+                return jsonify({'error': 'Slug already in use.'}), 400
+            old_slug = cat.slug
+            cat.slug = slug_val
+            if old_slug:
+                products = Product.query.filter(Product.category.ilike(old_slug)).all()
+                for p in products:
+                    p.category = slug_val
+    if 'image' in data:
+        cat.image = data['image'].strip()
+        
+    # Update Hero
+    if 'heroTitle' in data:
+        cat.heroTitle = data['heroTitle']
+    if 'heroSubtitle' in data:
+        cat.heroSubtitle = data['heroSubtitle']
+    if 'heroBadge' in data:
+        cat.heroBadge = data['heroBadge']
+    if 'heroImage' in data:
+        cat.heroImage = data['heroImage']
+    if 'backgroundImage' in data:
+        cat.backgroundImage = data['backgroundImage']
+    if 'backgroundColor' in data:
+        cat.backgroundColor = data['backgroundColor']
+    if 'gradient' in data:
+        cat.gradient = data['gradient']
+    if 'buttonText' in data:
+        cat.buttonText = data['buttonText']
+    if 'buttonLink' in data:
+        cat.buttonLink = data['buttonLink']
+        
+    # Update SEO
+    if 'metaTitle' in data:
+        cat.metaTitle = data['metaTitle']
+    if 'metaDescription' in data:
+        cat.metaDescription = data['metaDescription']
+        
+    # Update Config
+    if 'navbarOrder' in data:
+        cat.navbarOrder = int(data['navbarOrder'])
+    if 'isVisible' in data:
+        cat.isVisible = bool(data['isVisible'])
+    if 'features' in data:
+        cat.features = data['features']
+    if 'promos' in data:
+        cat.promos = data['promos']
+        
+    # Update Subcategories if passed
+    if 'subcategories' in data:
+        # Delete existing ones
+        for sub in cat.subcategories:
+            db.session.delete(sub)
+        # Add new ones
+        for idx, sub_data in enumerate(data['subcategories']):
+            sub = SubCategory(
+                categoryId=cat.id,
+                name=sub_data['name'],
+                slug=sub_data.get('slug') or sub_data['name'].lower().replace(' ', '-'),
+                icon=sub_data.get('icon') or cat.image,
+                sortOrder=sub_data.get('sortOrder', idx),
+                isVisible=sub_data.get('isVisible', True)
+            )
+            db.session.add(sub)
+            
+    db.session.commit()
+    return jsonify({'message': 'Category updated successfully', 'category': cat.to_json()}), 200
 
 @admin_bp.route('/categories/<name>', methods=['DELETE'])
 def delete_category(name):
-    cat = Category.query.get(name)
+    cat = Category.query.filter_by(slug=name).first() or Category.query.filter_by(name=name).first() or Category.query.get(name)
     if not cat:
         return jsonify({'error': 'Category not found.'}), 404
+        
+    data = request.get_json() or {}
+    action = data.get('action') # 'move' or 'delete_products'
+    move_to = data.get('moveTo') # slug/name of destination category
+    
+    cat_slug = cat.slug or cat.name.lower().replace(' ', '')
+    products_count = Product.query.filter(Product.category.ilike(cat_slug)).count()
+    
+    if products_count > 0 and not action:
+        return jsonify({
+            'requiresAction': True,
+            'productsCount': products_count,
+            'message': f'This category contains {products_count} products. Choose what to do with them.'
+        }), 200
+        
+    if products_count > 0:
+        if action == 'move':
+            if not move_to:
+                return jsonify({'error': 'Destination category is required to move products.'}), 400
+            dest_cat = Category.query.filter_by(slug=move_to).first() or Category.query.filter_by(name=move_to).first()
+            if not dest_cat:
+                return jsonify({'error': 'Destination category not found.'}), 404
+                
+            dest_slug = dest_cat.slug or dest_cat.name.lower().replace(' ', '')
+            products = Product.query.filter(Product.category.ilike(cat_slug)).all()
+            for p in products:
+                p.category = dest_slug
+                p.subcat = 'all' # reset to default all
+            db.session.commit()
+        elif action == 'delete_products':
+            products = Product.query.filter(Product.category.ilike(cat_slug)).all()
+            for p in products:
+                db.session.delete(p)
+            db.session.commit()
+            
     db.session.delete(cat)
     db.session.commit()
     return jsonify({'message': 'Category deleted successfully'}), 200

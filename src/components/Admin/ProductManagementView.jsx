@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import AddProductModal from './AddProductModal';
+import CategoryEditorModal from './CategoryEditorModal';
 
 export default function ProductManagementView({ initialTab = 'products' }) {
   const { fetchProducts: refetchGlobalProducts, fetchCategories: refetchGlobalCategories } = useAuth();
@@ -39,6 +40,8 @@ export default function ProductManagementView({ initialTab = 'products' }) {
   // Modal Control
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null); // null means adding new
+  const [categoryModalOpen, setCategoryModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null); // null means adding new
 
   // Live Category Management States
   const [categoriesList, setCategoriesList] = useState([]);
@@ -90,15 +93,37 @@ export default function ProductManagementView({ initialTab = 'products' }) {
   };
 
   const handleDeleteCategory = async (name) => {
-    if (!window.confirm(`Are you sure you want to delete the category "${name}"?`)) return;
     try {
-      await api.delete(`/api/admin/categories/${name}`);
-      toast.success('Category deleted successfully.');
+      const res = await api.delete(`/api/admin/categories/${name}`);
+      if (res.data && res.data.requiresAction) {
+        const count = res.data.productsCount;
+        const confirmMsg = `Category "${name}" contains ${count} products.\n\nChoose how to handle products:\n- Click OK to delete the products along with the category.\n- Click Cancel to move the products to another category first.`;
+        
+        if (window.confirm(confirmMsg)) {
+          await api.delete(`/api/admin/categories/${name}`, { data: { action: 'delete_products' } });
+          toast.success(`Category "${name}" and all its products deleted.`);
+        } else {
+          const otherCats = categoriesList.filter(c => c.slug !== name && c.name !== name);
+          if (otherCats.length === 0) {
+            return toast.error('No other categories available to move products to.');
+          }
+          const destCat = prompt(
+            `Enter the slug of the category to move products to:\nAvailable: ${otherCats.map(c => c.slug).join(', ')}`,
+            otherCats[0].slug
+          );
+          if (!destCat) return;
+          
+          await api.delete(`/api/admin/categories/${name}`, { data: { action: 'move', moveTo: destCat } });
+          toast.success(`Category products moved to "${destCat}". Category deleted.`);
+        }
+      } else {
+        toast.success('Category deleted successfully.');
+      }
       fetchCategoriesList();
       if (refetchGlobalCategories) refetchGlobalCategories();
     } catch (err) {
       console.error('Failed to delete category:', err);
-      toast.error('Failed to delete category.');
+      toast.error(err.response?.data?.error || 'Failed to delete category.');
     }
   };
 
@@ -458,75 +483,71 @@ export default function ProductManagementView({ initialTab = 'products' }) {
         </>
       ) : (
         /* Categories Tab */
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Categories list */}
-          <div className="lg:col-span-2 space-y-4">
-            <h3 className="font-extrabold text-sm text-gray-800 uppercase tracking-wider mb-2 select-none">Active Categories</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {categoryLoading ? (
-                Array.from({ length: 4 }).map((_, idx) => (
-                  <div key={idx} className="h-20 bg-gray-100 rounded-2xl animate-pulse" />
-                ))
-              ) : categoriesList.map((cat, i) => (
-                <div key={i} className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-center justify-between hover:border-emerald-100 transition">
-                  <div className="flex items-center gap-4">
+        <div className="space-y-6">
+          <div className="flex justify-between items-center select-none">
+            <div>
+              <h3 className="font-extrabold text-sm text-gray-800 uppercase tracking-wider">Dynamic Categories CMS</h3>
+              <p className="text-[11px] text-gray-400 font-semibold mt-0.5">Manage and customize your customer-facing category landing pages.</p>
+            </div>
+            <button
+              onClick={() => {
+                setSelectedCategory(null);
+                setCategoryModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" /> Create Category Page
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {categoryLoading ? (
+              Array.from({ length: 6 }).map((_, idx) => (
+                <div key={idx} className="h-28 bg-gray-150/40 rounded-3xl animate-pulse border border-gray-100" />
+              ))
+            ) : categoriesList.map((cat, i) => (
+              <div key={i} className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-emerald-500 transition group relative overflow-hidden">
+                <div className="flex items-start gap-4">
+                  <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center p-2 border border-gray-100 shrink-0">
                     <img
                       src={cat.image || '/category_fruits.png'}
                       alt={cat.name}
-                      className="w-12 h-12 rounded-xl object-cover bg-gray-50 border border-gray-100"
+                      className="max-h-full object-contain mix-blend-multiply rounded-xl"
                     />
-                    <div>
-                      <h4 className="font-extrabold text-sm text-gray-800 capitalize">{cat.name}</h4>
-                      <span className="text-[11px] text-gray-400 block mt-1 font-sans font-semibold">{cat.count} products</span>
-                    </div>
                   </div>
+                  <div className="flex-1 min-w-0 text-left">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-extrabold text-sm text-gray-800 truncate capitalize">{cat.name}</h4>
+                      {!cat.isVisible && (
+                        <span className="px-2 py-0.5 bg-gray-100 text-gray-400 font-bold rounded-md text-[9px]">Hidden</span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-gray-400 block mt-0.5 font-sans font-semibold">Slug: {cat.slug || cat.name.toLowerCase()}</span>
+                    <span className="text-[11.5px] text-emerald-600 block mt-1.5 font-sans font-extrabold">{cat.count} products assigned</span>
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-2 border-t border-gray-50 pt-4 mt-4 select-none">
                   <button
-                    onClick={() => handleDeleteCategory(cat.name)}
-                    className="p-2 text-gray-400 hover:text-rose-500 rounded-xl hover:bg-rose-50 transition cursor-pointer"
+                    onClick={() => {
+                      setSelectedCategory(cat);
+                      setCategoryModalOpen(true);
+                    }}
+                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                    title="Edit Category CMS"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" /> Edit CMS
+                  </button>
+                  <button
+                    onClick={() => handleDeleteCategory(cat.slug || cat.name)}
+                    className="flex items-center justify-center p-1.5 text-gray-450 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition cursor-pointer"
                     title="Delete Category"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="w-3.5 h-3.5" />
                   </button>
                 </div>
-              ))}
-            </div>
-          </div>
-
-          {/* Create category card */}
-          <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm flex flex-col h-fit">
-            <h3 className="font-extrabold text-base text-gray-800 mb-6 select-none">Create Category</h3>
-            <form onSubmit={handleCreateCategory} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 select-none">Category Name *</label>
-                <input
-                  type="text"
-                  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 transition"
-                  placeholder="e.g. herbs"
-                  value={newCatName}
-                  onChange={(e) => setNewCatName(e.target.value)}
-                  required
-                />
               </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5 select-none">Image Path/URL</label>
-                <input
-                  type="text"
-                  className="w-full bg-gray-50 border border-gray-100 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 transition"
-                  placeholder="e.g. /category_herbs.png"
-                  value={newCatImage}
-                  onChange={(e) => setNewCatImage(e.target.value)}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={submittingCategory}
-                className="w-full py-2.5 bg-emerald-600 text-white rounded-xl text-xs font-bold hover:bg-emerald-700 disabled:opacity-50 transition active:scale-95 cursor-pointer mt-4"
-              >
-                {submittingCategory ? 'Creating...' : 'Publish Category'}
-              </button>
-            </form>
+            ))}
           </div>
         </div>
       )}
@@ -537,6 +558,15 @@ export default function ProductManagementView({ initialTab = 'products' }) {
           product={selectedProduct}
           onClose={() => setModalOpen(false)}
           refresh={fetchProducts}
+        />
+      )}
+
+      {/* Category Editor CMS Modal */}
+      {categoryModalOpen && (
+        <CategoryEditorModal
+          category={selectedCategory}
+          onClose={() => setCategoryModalOpen(false)}
+          refresh={fetchCategoriesList}
         />
       )}
     </div>

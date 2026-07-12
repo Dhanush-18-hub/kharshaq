@@ -14,7 +14,8 @@ import {
   ShieldCheck,
   Search,
   Minus,
-  Plus
+  Plus,
+  Sparkles
 } from 'lucide-react';
 
 import { productsData as categoryData } from '../data/products';
@@ -22,7 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from 'react-hot-toast';
 
 export default function CategoryPage({ type, addToCart, getItemQuantity, updateQuantity, selectedProductId, setSelectedProductId, toggleWishlist, isInWishlist }) {
-  const { products } = useAuth();
+  const { products, categories } = useAuth();
 
   const getCategoryData = () => {
     const normalizedType = type.toLowerCase().replace(/\s+/g, '');
@@ -30,8 +31,6 @@ export default function CategoryPage({ type, addToCart, getItemQuantity, updateQ
       const pCat = (p.category || '').toLowerCase().replace(/\s+/g, '');
       return pCat === normalizedType;
     });
-
-    const staticCategory = categoryData[normalizedType] || categoryData.fruits;
 
     const mappedProducts = dbProducts.map(p => ({
       ...p,
@@ -42,6 +41,10 @@ export default function CategoryPage({ type, addToCart, getItemQuantity, updateQ
       stock: p.stock !== undefined ? Number(p.stock) : 100,
       availability: p.availability !== undefined ? Boolean(p.availability) : true
     }));
+
+    const dynamicCategory = (categories || []).find(
+      c => c.slug === normalizedType || c.name.toLowerCase().replace(/\s+/g, '') === normalizedType
+    );
 
     const defaultPromos = [
       {
@@ -66,6 +69,32 @@ export default function CategoryPage({ type, addToCart, getItemQuantity, updateQ
         bg: 'bg-[#E8F5E9]/50'
       }
     ];
+
+    if (dynamicCategory) {
+      return {
+        title: dynamicCategory.name,
+        heroBadge: dynamicCategory.heroBadge || '100% QUALITY ASSURED',
+        heroTitlePart1: dynamicCategory.heroTitle || `Fresh ${dynamicCategory.name}`,
+        heroTitlePart2: '',
+        heroDesc: dynamicCategory.heroSubtitle || '',
+        heroImg: dynamicCategory.heroImage || dynamicCategory.image || '/category_fruits.png',
+        heroBgColor: dynamicCategory.backgroundColor || '#FFFFFF',
+        heroBg: dynamicCategory.backgroundImage || '',
+        heroGradient: dynamicCategory.gradient || '',
+        buttonText: dynamicCategory.buttonText || 'Shop Now',
+        buttonLink: dynamicCategory.buttonLink || '#',
+        features: dynamicCategory.features || [],
+        subcategories: (dynamicCategory.subcategories || []).map(s => ({
+          id: s.slug,
+          title: s.name,
+          image: s.icon || dynamicCategory.image
+        })),
+        products: mappedProducts,
+        promos: dynamicCategory.promos && dynamicCategory.promos.length > 0 ? dynamicCategory.promos : defaultPromos
+      };
+    }
+
+    const staticCategory = categoryData[normalizedType] || categoryData.fruits;
 
     return {
       ...staticCategory,
@@ -137,7 +166,18 @@ export default function CategoryPage({ type, addToCart, getItemQuantity, updateQ
 
       {/* Section 1: Hero Banner */}
       <section className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-6 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center bg-white rounded-[32px] p-8 lg:p-12 border border-border-color shadow-premium relative overflow-hidden">
+        <div
+          style={{
+            backgroundColor: data.heroBgColor || '#FFFFFF',
+            backgroundImage: data.heroBg ? `url(${data.heroBg})` : undefined,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center'
+          }}
+          className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center rounded-[32px] p-8 lg:p-12 border border-border-color shadow-premium relative overflow-hidden"
+        >
+          {data.heroGradient && (
+            <div className="absolute inset-0 z-0 pointer-events-none" style={{ background: data.heroGradient }} />
+          )}
 
           {/* Leaves Decor Backdrop */}
           <div className="absolute right-[-10%] top-[-20%] w-[50%] h-[120%] bg-radial from-light-green/30 to-transparent blur-3xl pointer-events-none" />
@@ -153,7 +193,7 @@ export default function CategoryPage({ type, addToCart, getItemQuantity, updateQ
             {/* Main Heading */}
             <h1 className="text-[38px] md:text-[54px] font-black text-gray-800 leading-[1.08] tracking-tight mb-6">
               {data.heroTitlePart1}<br />
-              <span className="text-primary-green">{data.heroTitlePart2}</span>
+              {data.heroTitlePart2 && <span className="text-primary-green">{data.heroTitlePart2}</span>}
             </h1>
 
             {/* Description */}
@@ -161,48 +201,29 @@ export default function CategoryPage({ type, addToCart, getItemQuantity, updateQ
               {data.heroDesc}
             </p>
 
-            {/* Banner Micro Features (4 indicators in a row) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full pt-2">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-light-green flex items-center justify-center text-primary-green shrink-0">
-                  <Leaf className="w-4 h-4" />
-                </div>
-                <div className="text-left">
-                  <span className="text-[12px] font-black text-gray-800 block leading-none">Farm Fresh</span>
-                  <span className="text-[10px] text-gray-400 font-semibold mt-0.5 block leading-none">Picked Daily</span>
-                </div>
+            {/* Banner Micro Features */}
+            {data.features && data.features.length > 0 && (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 w-full pt-2">
+                {data.features.map((feat, idx) => {
+                  const iconName = feat.icon || 'Sparkles';
+                  const LeafIcon = iconName === 'Leaf' ? Leaf : 
+                                   iconName === 'ShieldCheck' ? ShieldCheck :
+                                   iconName === 'Star' ? Star :
+                                   iconName === 'Truck' ? Truck : Sparkles;
+                  return (
+                    <div key={idx} className="flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-light-green/80 flex items-center justify-center text-primary-green shrink-0">
+                        <LeafIcon className={`w-4 h-4 ${iconName === 'Star' ? 'fill-primary-green stroke-none' : ''}`} />
+                      </div>
+                      <div className="text-left">
+                        <span className="text-[12px] font-black text-gray-800 block leading-none">{feat.title}</span>
+                        <span className="text-[10px] text-gray-400 font-semibold mt-0.5 block leading-none">{feat.desc}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-light-green flex items-center justify-center text-primary-green shrink-0">
-                  <ShieldCheck className="w-4 h-4" />
-                </div>
-                <div className="text-left">
-                  <span className="text-[12px] font-black text-gray-800 block leading-none">No Chemicals</span>
-                  <span className="text-[10px] text-gray-400 font-semibold mt-0.5 block leading-none">100% Natural</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-light-green flex items-center justify-center text-primary-green shrink-0">
-                  <Star className="w-4 h-4 fill-primary-green stroke-none" />
-                </div>
-                <div className="text-left">
-                  <span className="text-[12px] font-black text-gray-800 block leading-none">Premium Quality</span>
-                  <span className="text-[10px] text-gray-400 font-semibold mt-0.5 block leading-none">Hand Selected</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-light-green flex items-center justify-center text-primary-green shrink-0">
-                  <Truck className="w-4 h-4" />
-                </div>
-                <div className="text-left">
-                  <span className="text-[12px] font-black text-gray-800 block leading-none">Delivered Fresh</span>
-                  <span className="text-[10px] text-gray-400 font-semibold mt-0.5 block leading-none">At Your Doorstep</span>
-                </div>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Hero Right Banner Image */}

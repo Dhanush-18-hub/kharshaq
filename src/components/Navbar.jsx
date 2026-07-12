@@ -96,21 +96,21 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
               </button>
 
               {productsDropdownOpen && (
-                <div className="absolute left-1/2 -translate-x-1/2 top-[100%] pt-2 w-[220px] z-50">
-                  <div className="bg-white border border-border-color rounded-2xl shadow-premium p-2 flex flex-col gap-1">
+                <div className="absolute left-1/2 -translate-x-1/2 top-[100%] pt-2 z-50">
+                  <div className={`bg-white border border-border-color rounded-2xl shadow-premium p-3 grid gap-1.5 max-h-[360px] overflow-y-auto scrollbar-thin ${dynamicCategoriesList.length > 5 ? 'grid-cols-2 w-[450px]' : 'grid-cols-1 w-[220px]'}`}>
                     {dynamicCategoriesList.map((cat) => (
                       <button
-                        key={cat.id}
+                        key={cat.id || cat.slug || cat.name}
                         onClick={() => {
                           setActiveTab(cat.name);
                           setProductsDropdownOpen(false);
                         }}
-                        className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-light-green/50 rounded-xl text-left text-[14.5px] font-bold text-gray-700 hover:text-primary-green transition-all cursor-pointer group"
+                        className="w-full flex items-center gap-3 px-3 py-2 hover:bg-light-green/50 rounded-xl text-left text-[14.5px] font-bold text-gray-700 hover:text-primary-green transition-all cursor-pointer group"
                       >
                         <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center p-1 border border-gray-100 shrink-0">
-                          <img src={cat.image} alt={cat.name} className="max-h-6 object-contain mix-blend-multiply rounded-full" />
+                          <img src={cat.image || '/category_fruits.png'} alt={cat.name} className="max-h-6 object-contain mix-blend-multiply rounded-full" />
                         </div>
-                        <span className="group-hover:translate-x-1 transition-transform">{cat.name}</span>
+                        <span className="group-hover:translate-x-1 transition-transform truncate">{cat.name}</span>
                       </button>
                     ))}
                   </div>

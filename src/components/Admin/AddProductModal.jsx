@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
-import { api } from '../../context/AuthContext';
+import { api, useAuth } from '../../context/AuthContext';
 import { X, Sparkles } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
 export default function AddProductModal({ product, onClose, refresh }) {
+  const { categories } = useAuth();
+
+  const categoriesList = categories && categories.length > 0 ? categories : [
+    { name: 'Fruits', slug: 'fruits', subcategories: [{ name: 'All Fruits', slug: 'all' }] },
+    { name: 'Vegetables', slug: 'vegetables', subcategories: [{ name: 'All Veggies', slug: 'all' }] },
+    { name: 'Spices', slug: 'spices', subcategories: [{ name: 'All Spices', slug: 'all' }] },
+    { name: 'Dry Fruits', slug: 'dryfruits', subcategories: [{ name: 'All Dry Fruits', slug: 'all' }] },
+    { name: 'Others', slug: 'others', subcategories: [{ name: 'All Others', slug: 'all' }] }
+  ];
+
   const isEdit = !!product;
   const [submitting, setSubmitting] = useState(false);
 
@@ -23,6 +33,9 @@ export default function AddProductModal({ product, onClose, refresh }) {
   const [organic, setOrganic] = useState(product?.organic || false);
   const [bestSeller, setBestSeller] = useState(product?.best_seller || false);
   const [availability, setAvailability] = useState(product?.availability ?? true);
+
+  const selectedCatObj = categoriesList.find(c => c.slug === category || c.name.toLowerCase().replace(/\s+/g, '') === category);
+  const subcategoriesList = selectedCatObj && selectedCatObj.subcategories ? selectedCatObj.subcategories : [];
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -117,26 +130,49 @@ export default function AddProductModal({ product, onClose, refresh }) {
               <select
                 className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
                 value={category}
-                onChange={(e) => setCategory(e.target.value)}
+                onChange={(e) => {
+                  const newCat = e.target.value;
+                  setCategory(newCat);
+                  const catObj = categoriesList.find(c => c.slug === newCat || c.name.toLowerCase() === newCat);
+                  if (catObj && catObj.subcategories && catObj.subcategories.length > 0) {
+                    setSubcat(catObj.subcategories[0].slug);
+                  } else {
+                    setSubcat('all');
+                  }
+                }}
               >
-                <option value="fruits">Fruits</option>
-                <option value="vegetables">Vegetables</option>
-                <option value="spices">Spices</option>
-                <option value="dryfruits">Dry Fruits</option>
-                <option value="others">Others</option>
+                {categoriesList.map((c) => (
+                  <option key={c.slug || c.name.toLowerCase()} value={c.slug || c.name.toLowerCase()}>
+                    {c.name}
+                  </option>
+                ))}
               </select>
             </div>
 
             {/* Subcategory */}
             <div>
               <label className="block text-xs font-bold text-gray-400 uppercase tracking-wider mb-1.5">Subcategory</label>
-              <input
-                type="text"
-                className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
-                placeholder="e.g. citrus, leafy, powders..."
-                value={subcat}
-                onChange={(e) => setSubcat(e.target.value)}
-              />
+              {subcategoriesList.length > 0 ? (
+                <select
+                  className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                  value={subcat}
+                  onChange={(e) => setSubcat(e.target.value)}
+                >
+                  {subcategoriesList.map((sub) => (
+                    <option key={sub.slug} value={sub.slug}>
+                      {sub.name}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  className="w-full bg-gray-50/50 border border-gray-200/60 rounded-xl px-3.5 py-2.5 font-semibold text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition"
+                  placeholder="e.g. all, citrus, leafy..."
+                  value={subcat}
+                  onChange={(e) => setSubcat(e.target.value)}
+                />
+              )}
             </div>
 
             {/* Price */}
