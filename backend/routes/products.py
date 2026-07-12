@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from backend.models import db, Product, Category, Offer, SubCategory
+from backend.models import db, Product, Category, Offer, SubCategory, BroadcastNotification
 
 products_bp = Blueprint('products_bp', __name__)
 
@@ -81,3 +81,8 @@ def get_category_by_slug(slug):
 def list_offers():
     offers = Offer.query.all()
     return jsonify([o.to_json() for o in offers]), 200
+
+@products_bp.route('/notifications', methods=['GET'])
+def list_notifications():
+    notifs = BroadcastNotification.query.order_by(BroadcastNotification.id.desc()).all()
+    return jsonify([n.to_json() for n in notifs]), 200

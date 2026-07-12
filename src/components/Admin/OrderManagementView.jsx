@@ -13,7 +13,8 @@ import {
   AlertCircle,
   Eye,
   Clock,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 

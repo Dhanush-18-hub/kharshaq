@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
-from backend.models import db, User, Product, Category, Offer, SubCategory
+from backend.models import db, User, Product, Category, Offer, SubCategory, BroadcastNotification
 from datetime import datetime, timedelta
 import random
 
@@ -384,10 +384,16 @@ def update_order_status(user_id, order_id):
     if not new_status:
         return jsonify({'error': 'Status is required.'}), 400
         
-    orders = user.orders or []
+    import copy
+    orders = copy.deepcopy(user.orders or [])
     updated = False
+    
+    # Strip any common symbols to match IDs reliably
+    clean_order_id = str(order_id).replace('#', '').replace('KSQ', '').strip()
+    
     for o in orders:
-        if str(o.get('id')) == str(order_id):
+        clean_o_id = str(o.get('id', '')).replace('#', '').replace('KSQ', '').strip()
+        if clean_o_id == clean_order_id:
             o['status'] = new_status
             updated = True
             break
@@ -396,6 +402,25 @@ def update_order_status(user_id, order_id):
         return jsonify({'error': 'Order not found.'}), 404
         
     user.orders = orders
+    
+    # Generate and store user-specific notification
+    notif_id = f"ord_{clean_order_id}_{int(datetime.utcnow().timestamp())}"
+    notif = {
+        'id': notif_id,
+        'title': f"Order #{clean_order_id} Updated",
+        'desc': f"Your order #{clean_order_id} status has been updated to '{new_status}'.",
+        'category': 'Orders',
+        'date': datetime.now().strftime("%d %b %Y"),
+        'time': datetime.now().strftime("%I:%M %p"),
+        'isRead': False,
+        'link': '/orders',
+        'linkLabel': 'View Order'
+    }
+    
+    user_notifs = list(user.notifications or [])
+    user_notifs.insert(0, notif)
+    user.notifications = user_notifs
+    
     db.session.commit()
     return jsonify({'message': 'Order status updated successfully', 'status': new_status}), 200
 
@@ -711,3 +736,33 @@ def delete_offer(id):
     db.session.delete(off)
     db.session.commit()
     return jsonify({'message': 'Offer deleted successfully'}), 200
+
+@admin_bp.route('/broadcast', methods=['POST'])
+def send_broadcast_notification():
+    data = request.get_json() or {}
+    desc = data.get('desc', '').strip()
+    title = data.get('title', 'System Broadcast').strip()
+    category = data.get('category', 'Updates').strip()
+    link = data.get('link', '/').strip()
+    link_label = data.get('linkLabel', 'Explore').strip()
+    
+    if not desc:
+        return jsonify({'error': 'Notification message description is required.'}), 400
+        
+    now = datetime.now()
+    date_str = now.strftime("%d %b %Y")
+    time_str = now.strftime("%I:%M %p")
+    
+    notif = BroadcastNotification(
+        title=title,
+        desc=desc,
+        category=category,
+        date=date_str,
+        time=time_str,
+        link=link,
+        link_label=link_label
+    )
+    db.session.add(notif)
+    db.session.commit()
+    
+    return jsonify({'message': 'Broadcast sent successfully', 'notification': notif.to_json()}), 201

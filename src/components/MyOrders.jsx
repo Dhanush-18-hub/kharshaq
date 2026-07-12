@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -8,9 +8,15 @@ import {
 import { toast } from 'react-hot-toast';
 
 export default function MyOrders({ addToCart, getItemQuantity, updateQuantity }) {
-  const { user, logout, rewardPoints, notifications } = useAuth();
+  const { user, logout, rewardPoints, notifications, refreshUserProfile } = useAuth();
   const navigate = useNavigate();
   const unreadCount = notifications ? notifications.filter(n => !n.isRead).length : 0;
+  
+  useEffect(() => {
+    if (refreshUserProfile) {
+      refreshUserProfile();
+    }
+  }, []);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All'); // 'All', 'Processing', 'Shipped', 'Delivered', 'Cancelled'

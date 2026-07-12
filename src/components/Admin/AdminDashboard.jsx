@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../../context/AuthContext';
 import { api } from '../../context/AuthContext';
 import {
@@ -51,6 +52,33 @@ export default function AdminDashboard() {
 
   // Search state across views
   const [globalSearch, setGlobalSearch] = useState('');
+
+  // System Broadcast State
+  const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [sendingBroadcast, setSendingBroadcast] = useState(false);
+
+  const handleSendBroadcast = async () => {
+    if (!broadcastMsg.trim()) {
+      return toast.error('Please enter a notification message.');
+    }
+    try {
+      setSendingBroadcast(true);
+      await api.post('/api/admin/broadcast', {
+        title: 'System Announcement',
+        desc: broadcastMsg.trim(),
+        category: 'Updates',
+        link: '/',
+        linkLabel: 'Explore'
+      });
+      toast.success('Broadcast notification sent to all users!');
+      setBroadcastMsg('');
+    } catch (err) {
+      console.error('Failed to send broadcast:', err);
+      toast.error('Failed to send system broadcast.');
+    } finally {
+      setSendingBroadcast(false);
+    }
+  };
 
   // Fetch metrics data on mount
   const fetchStats = async () => {
@@ -180,12 +208,16 @@ export default function AdminDashboard() {
               className="w-full p-4 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-emerald-500 font-sans text-sm mb-4"
               placeholder="Type message to send to all customer side notification centers..."
               rows={4}
+              value={broadcastMsg}
+              onChange={(e) => setBroadcastMsg(e.target.value)}
+              disabled={sendingBroadcast}
             />
             <button
-              onClick={() => toast.success('Broadcast sent successfully!')}
-              className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition"
+              onClick={handleSendBroadcast}
+              disabled={sendingBroadcast}
+              className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl text-sm font-semibold hover:bg-emerald-700 transition disabled:opacity-50 cursor-pointer"
             >
-              Send Notification
+              {sendingBroadcast ? 'Sending...' : 'Send Notification'}
             </button>
           </div>
         );

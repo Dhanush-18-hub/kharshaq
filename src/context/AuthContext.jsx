@@ -417,6 +417,21 @@ export function AuthProvider({
     }
   };
 
+  const refreshUserProfile = async () => {
+    const storedToken = localStorage.getItem('karshaq_token') || sessionStorage.getItem('karshaq_token');
+    if (storedToken) {
+      try {
+        const res = await api.get('/api/user/profile');
+        if (res.data && res.data.user) {
+          setUser(res.data.user);
+          return res.data.user;
+        }
+      } catch (err) {
+        console.error('Failed to refresh user profile:', err);
+      }
+    }
+  };
+
   return (
     <AuthContext.Provider value={{
       user,
@@ -435,6 +450,7 @@ export function AuthProvider({
       logout,
       syncCartItems,
       placeOrder,
+      refreshUserProfile,
       rewardPoints,
       setRewardPoints,
       rewardTransactions,

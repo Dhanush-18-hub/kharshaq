@@ -62,7 +62,7 @@ function AppContent({
   const [selectedProductId, setSelectedProductId] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, token, syncCartItems, categories } = useAuth();
+  const { user, token, syncCartItems, categories, refreshUserProfile } = useAuth();
 
   // Sync cart items to database automatically when user is logged in
   useEffect(() => {
@@ -149,7 +149,7 @@ function AppContent({
     }
   }, [user, location.pathname, navigate]);
 
-  // Listen to user changes (login/logout) to load user-specific rewards/notifications
+  // Listen to user changes (login/logout) to load user-specific rewards
   useEffect(() => {
     if (user) {
       setAddresses(user.addresses || []);
@@ -157,7 +157,6 @@ function AppContent({
       setRewardPoints(user.reward_points !== undefined ? user.reward_points : 0);
       setRewardTransactions([]);
       setRewardVouchers([]);
-      setNotifications([]);
     } else {
       setAddresses([
         {
@@ -295,142 +294,76 @@ function AppContent({
         }
       ]);
 
-      setNotifications([
-        {
-          id: 'n1',
-          title: 'Your order #KSQ12876 has been delivered',
-          desc: 'Your order has been delivered successfully. We hope you enjoy your fresh products!',
-          category: 'Orders',
-          date: '18 May 2025',
-          time: '10:30 AM',
-          isRead: false,
-          link: '/orders',
-          linkLabel: 'View Order'
-        },
-        {
-          id: 'n2',
-          title: 'You earned 250 reward points!',
-          desc: "Great news! You've earned 250 points for your recent purchase.",
-          category: 'Offers',
-          date: '17 May 2025',
-          time: '07:15 PM',
-          isRead: false,
-          link: '/rewards',
-          linkLabel: 'View Rewards'
-        },
-        {
-          id: 'n3',
-          title: 'Weekend Special: Flat 15% OFF!',
-          desc: 'Enjoy flat 15% off on all fruits & vegetables this weekend. Offer valid till 19 May 2025.',
-          category: 'Offers',
-          date: '17 May 2025',
-          time: '09:00 AM',
-          isRead: false,
-          link: '/offers',
-          linkLabel: 'Shop Now'
-        },
-        {
-          id: 'n4',
-          title: 'Your order #KSQ12654 is out for delivery',
-          desc: 'Good news! Your order is on the way and will reach you soon.',
-          category: 'Orders',
-          date: '16 May 2025',
-          time: '11:20 AM',
-          isRead: true,
-          link: '/orders',
-          linkLabel: 'Track Order'
-        },
-        {
-          id: 'n5',
-          title: 'Price drop alert!',
-          desc: 'The price of "Almonds 250g" has dropped. Grab it before it goes up again!',
-          category: 'Updates',
-          date: '15 May 2025',
-          time: '06:45 PM',
-          isRead: true,
-          link: '/dryfruits',
-          linkLabel: 'Shop Now'
-        },
-        {
-          id: 'n6',
-          title: 'You have a reward expiring soon',
-          desc: '500 reward points will expire on 18 Oct 2025. Redeem them now!',
-          category: 'Reminders',
-          date: '15 May 2025',
-          time: '03:30 PM',
-          isRead: true,
-          link: '/rewards',
-          linkLabel: 'View Rewards'
-        },
-        {
-          id: 'n7',
-          title: 'Your order #KSQ12654 has been packed',
-          desc: 'Your order has been packed successfully and is ready to be shipped.',
-          category: 'Orders',
-          date: '15 May 2025',
-          time: '10:00 AM',
-          isRead: true,
-          link: '/orders',
-          linkLabel: 'View Order'
-        },
-        {
-          id: 'n8',
-          title: 'Your order #KSQ12654 has been placed',
-          desc: 'Thank you for shopping with us! Your order #KSQ12654 has been successfully placed.',
-          category: 'Orders',
-          date: '14 May 2025',
-          time: '04:15 PM',
-          isRead: true,
-          link: '/orders',
-          linkLabel: 'View Order'
-        },
-        {
-          id: 'n9',
-          title: 'Refer a friend and get 250 points!',
-          desc: 'Invite your friends to shop at Karshaq and earn 250 reward points on their first purchase.',
-          category: 'Offers',
-          date: '14 May 2025',
-          time: '11:00 AM',
-          isRead: true,
-          link: '/rewards',
-          linkLabel: 'Refer Now'
-        },
-        {
-          id: 'n10',
-          title: 'New Category Added: Spices!',
-          desc: 'Explore our fresh collection of organic spices sourced directly from local farmers.',
-          category: 'Updates',
-          date: '12 May 2025',
-          time: '09:30 AM',
-          isRead: true,
-          link: '/spices',
-          linkLabel: 'Explore Spices'
-        },
-        {
-          id: 'n11',
-          title: 'System Maintenance Completed',
-          desc: 'Our system upgrade is complete. You can now experience faster checkouts and smooth navigation.',
-          category: 'Updates',
-          date: '10 May 2025',
-          time: '02:00 AM',
-          isRead: true,
-          link: '/',
-          linkLabel: 'Go Home'
-        },
-        {
-          id: 'n12',
-          title: 'Welcome to Karshaq!',
-          desc: 'We are thrilled to have you here. Enjoy ₹50 off on your first purchase with coupon: WELCOME50.',
-          category: 'Offers',
-          date: '10 May 2025',
-          time: '12:00 PM',
-          isRead: true,
-          link: '/',
-          linkLabel: 'Shop Now'
-        }
-      ]);
+      setNotifications([]);
     }
   }, [user]);
+
+  // Load and periodically refresh notifications and user profile updates
+  useEffect(() => {
+    const fetchNotificationsAndProfile = async () => {
+      try {
+        const res = await api.get('/api/notifications');
+        if (res.data) {
+          const readIds = JSON.parse(localStorage.getItem('read_notification_ids') || '[]');
+          const deletedIds = JSON.parse(localStorage.getItem('deleted_notification_ids') || '[]');
+
+          const backendNotifs = res.data
+            .filter(n => !deletedIds.includes(n.id))
+            .map(n => ({
+              ...n,
+              isRead: readIds.includes(n.id)
+            }));
+
+          const userNotifs = (user && user.notifications)
+            ? user.notifications
+                .filter(n => !deletedIds.includes(n.id))
+                .map(n => ({
+                  ...n,
+                  isRead: readIds.includes(n.id)
+                }))
+            : [];
+
+          setNotifications(prev => {
+            const filteredPrev = prev.filter(n => !deletedIds.includes(n.id));
+            const combined = [...backendNotifs, ...userNotifs, ...filteredPrev];
+            const unique = [];
+            const seen = new Set();
+            for (const item of combined) {
+              if (!seen.has(item.id)) {
+                seen.add(item.id);
+                unique.push(item);
+              }
+            }
+            return unique;
+          });
+        }
+      } catch (err) {
+        console.error('Failed to load system notifications:', err);
+      }
+
+      // Periodically refresh profile/orders if token is valid and user is logged in
+      if (token && refreshUserProfile) {
+        try {
+          await refreshUserProfile();
+        } catch (err) {
+          console.error('Failed to auto-refresh user profile:', err);
+        }
+      }
+    };
+
+    fetchNotificationsAndProfile(); // Initial fetch
+
+    const interval = setInterval(fetchNotificationsAndProfile, 10000); // Poll every 10 seconds
+    return () => clearInterval(interval);
+  }, [user, token, refreshUserProfile]);
+
+  // Synchronize read notifications status to localStorage
+  useEffect(() => {
+    if (notifications && notifications.length > 0) {
+      const readIds = notifications.filter(n => n.isRead).map(n => n.id);
+      localStorage.setItem('read_notification_ids', JSON.stringify(readIds));
+    }
+  }, [notifications]);
 
   // Map route pathnames to active tabs in the Navbar
   const getActiveTab = () => {
@@ -842,140 +775,7 @@ export default function App() {
     }
   ]);
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 'n1',
-      title: 'Your order #KSQ12876 has been delivered',
-      desc: 'Your order has been delivered successfully. We hope you enjoy your fresh products!',
-      category: 'Orders',
-      date: '18 May 2025',
-      time: '10:30 AM',
-      isRead: false,
-      link: '/orders',
-      linkLabel: 'View Order'
-    },
-    {
-      id: 'n2',
-      title: 'You earned 250 reward points!',
-      desc: "Great news! You've earned 250 points for your recent purchase.",
-      category: 'Offers',
-      date: '17 May 2025',
-      time: '07:15 PM',
-      isRead: false,
-      link: '/rewards',
-      linkLabel: 'View Rewards'
-    },
-    {
-      id: 'n3',
-      title: 'Weekend Special: Flat 15% OFF!',
-      desc: 'Enjoy flat 15% off on all fruits & vegetables this weekend. Offer valid till 19 May 2025.',
-      category: 'Offers',
-      date: '17 May 2025',
-      time: '09:00 AM',
-      isRead: false,
-      link: '/offers',
-      linkLabel: 'Shop Now'
-    },
-    {
-      id: 'n4',
-      title: 'Your order #KSQ12654 is out for delivery',
-      desc: 'Good news! Your order is on the way and will reach you soon.',
-      category: 'Orders',
-      date: '16 May 2025',
-      time: '11:20 AM',
-      isRead: true,
-      link: '/orders',
-      linkLabel: 'Track Order'
-    },
-    {
-      id: 'n5',
-      title: 'Price drop alert!',
-      desc: 'The price of "Almonds 250g" has dropped. Grab it before it goes up again!',
-      category: 'Updates',
-      date: '15 May 2025',
-      time: '06:45 PM',
-      isRead: true,
-      link: '/dryfruits',
-      linkLabel: 'Shop Now'
-    },
-    {
-      id: 'n6',
-      title: 'You have a reward expiring soon',
-      desc: '500 reward points will expire on 18 Oct 2025. Redeem them now!',
-      category: 'Reminders',
-      date: '15 May 2025',
-      time: '03:30 PM',
-      isRead: true,
-      link: '/rewards',
-      linkLabel: 'View Rewards'
-    },
-    {
-      id: 'n7',
-      title: 'Your order #KSQ12654 has been packed',
-      desc: 'Your order has been packed successfully and is ready to be shipped.',
-      category: 'Orders',
-      date: '15 May 2025',
-      time: '10:00 AM',
-      isRead: true,
-      link: '/orders',
-      linkLabel: 'View Order'
-    },
-    {
-      id: 'n8',
-      title: 'Your order #KSQ12654 has been placed',
-      desc: 'Thank you for shopping with us! Your order #KSQ12654 has been successfully placed.',
-      category: 'Orders',
-      date: '14 May 2025',
-      time: '04:15 PM',
-      isRead: true,
-      link: '/orders',
-      linkLabel: 'View Order'
-    },
-    {
-      id: 'n9',
-      title: 'Refer a friend and get 250 points!',
-      desc: 'Invite your friends to shop at Karshaq and earn 250 reward points on their first purchase.',
-      category: 'Offers',
-      date: '14 May 2025',
-      time: '11:00 AM',
-      isRead: true,
-      link: '/rewards',
-      linkLabel: 'Refer Now'
-    },
-    {
-      id: 'n10',
-      title: 'New Category Added: Spices!',
-      desc: 'Explore our fresh collection of organic spices sourced directly from local farmers.',
-      category: 'Updates',
-      date: '12 May 2025',
-      time: '09:30 AM',
-      isRead: true,
-      link: '/spices',
-      linkLabel: 'Explore Spices'
-    },
-    {
-      id: 'n11',
-      title: 'System Maintenance Completed',
-      desc: 'Our system upgrade is complete. You can now experience faster checkouts and smooth navigation.',
-      category: 'Updates',
-      date: '10 May 2025',
-      time: '02:00 AM',
-      isRead: true,
-      link: '/',
-      linkLabel: 'Go Home'
-    },
-    {
-      id: 'n12',
-      title: 'Welcome to Karshaq!',
-      desc: 'We are thrilled to have you here. Enjoy ₹50 off on your first purchase with coupon: WELCOME50.',
-      category: 'Offers',
-      date: '10 May 2025',
-      time: '12:00 PM',
-      isRead: true,
-      link: '/',
-      linkLabel: 'Shop Now'
-    }
-  ]);
+  const [notifications, setNotifications] = useState([]);
 
   const addToCart = (product) => {
     setCartItems(prev => {

@@ -20,6 +20,7 @@ class User(db.Model):
     cart = db.Column(db.JSON, default=list, nullable=False)
     orders = db.Column(db.JSON, default=list, nullable=False)
     payment_methods = db.Column(db.JSON, default=list, nullable=False)
+    notifications = db.Column(db.JSON, default=list, nullable=False)
     
     reward_points = db.Column(db.Integer, default=0, nullable=False)
     membership_level = db.Column(db.String(50), default='Bronze', nullable=False)
@@ -41,6 +42,7 @@ class User(db.Model):
             'cart': self.cart,
             'orders': self.orders,
             'payment_methods': self.payment_methods,
+            'notifications': self.notifications,
             'reward_points': self.reward_points,
             'membership_level': self.membership_level,
             'role': self.role,
@@ -212,4 +214,30 @@ class Offer(db.Model):
             'description': self.description,
             'discount': self.discount,
             'image': self.image
+        }
+
+class BroadcastNotification(db.Model):
+    __tablename__ = 'broadcast_notifications'
+
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(255), nullable=False)
+    desc = db.Column(db.Text, nullable=False)
+    category = db.Column(db.String(50), default='Updates', nullable=False)
+    date = db.Column(db.String(50), nullable=False)
+    time = db.Column(db.String(50), nullable=False)
+    link = db.Column(db.String(255), default='/', nullable=False)
+    link_label = db.Column(db.String(50), default='Explore', nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_json(self):
+        return {
+            'id': f"bn_{self.id}",
+            'title': self.title,
+            'desc': self.desc,
+            'category': self.category,
+            'date': self.date,
+            'time': self.time,
+            'link': self.link,
+            'linkLabel': self.link_label,
+            'isRead': False
         }

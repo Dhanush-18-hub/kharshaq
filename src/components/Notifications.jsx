@@ -47,6 +47,13 @@ export default function Notifications({ notifications, setNotifications }) {
   const handleDeleteNotification = (e, id) => {
     e.stopPropagation(); // Avoid triggering mark as read when clicking delete
     setNotifications(prev => prev.filter(n => n.id !== id));
+    
+    const deletedIds = JSON.parse(localStorage.getItem('deleted_notification_ids') || '[]');
+    if (!deletedIds.includes(id)) {
+      deletedIds.push(id);
+      localStorage.setItem('deleted_notification_ids', JSON.stringify(deletedIds));
+    }
+    
     toast.success('Notification deleted');
   };
 
