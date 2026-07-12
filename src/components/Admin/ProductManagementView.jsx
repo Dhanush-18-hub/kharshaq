@@ -23,6 +23,11 @@ import CategoryEditorModal from './CategoryEditorModal';
 export default function ProductManagementView({ initialTab = 'products' }) {
   const { fetchProducts: refetchGlobalProducts, fetchCategories: refetchGlobalCategories } = useAuth();
   const [currentTab, setCurrentTab] = useState(initialTab); // 'products' or 'categories'
+
+  useEffect(() => {
+    setCurrentTab(initialTab);
+  }, [initialTab]);
+
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
 
