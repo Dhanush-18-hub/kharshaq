@@ -100,9 +100,12 @@ export default function Auth({ initialMode = 'login' }) {
   // Google OAuth script initialization
   useEffect(() => {
     const initGoogle = () => {
+      const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+      if (!clientId) return;
+
       if (window.google) {
         window.google.accounts.id.initialize({
-          client_id: import.meta.env.VITE_GOOGLE_CLIENT_ID || 'MOCK_CLIENT_ID',
+          client_id: clientId,
           callback: async (response) => {
             if (response.credential) {
               try {
@@ -117,28 +120,40 @@ export default function Auth({ initialMode = 'login' }) {
           }
         });
         
-        const googleBtn = document.getElementById('google-btn-div');
-        if (googleBtn) {
-          window.google.accounts.id.renderButton(googleBtn, {
-            theme: 'outline',
-            size: 'large',
-            width: 240
-          });
-        }
+        setTimeout(() => {
+          const googleBtnLogin = document.getElementById('google-btn-login');
+          if (googleBtnLogin) {
+            window.google.accounts.id.renderButton(googleBtnLogin, {
+              theme: 'outline',
+              size: 'large',
+              width: googleBtnLogin.offsetWidth || 240
+            });
+          }
+          const googleBtnSignup = document.getElementById('google-btn-signup');
+          if (googleBtnSignup) {
+            window.google.accounts.id.renderButton(googleBtnSignup, {
+              theme: 'outline',
+              size: 'large',
+              width: googleBtnSignup.offsetWidth || 240
+            });
+          }
+        }, 150);
       }
     };
 
-    // Load Google Identity Services script
-    if (!document.getElementById('google-gsi-script')) {
-      const script = document.createElement('script');
-      script.id = 'google-gsi-script';
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = initGoogle;
-      document.body.appendChild(script);
-    } else {
-      initGoogle();
+    // Load Google Identity Services script if configured
+    if (import.meta.env.VITE_GOOGLE_CLIENT_ID) {
+      if (!document.getElementById('google-gsi-script')) {
+        const script = document.createElement('script');
+        script.id = 'google-gsi-script';
+        script.src = 'https://accounts.google.com/gsi/client';
+        script.async = true;
+        script.defer = true;
+        script.onload = initGoogle;
+        document.body.appendChild(script);
+      } else {
+        initGoogle();
+      }
     }
   }, [isSignUp, loginMethod, authStep]);
 
@@ -447,18 +462,26 @@ export default function Auth({ initialMode = 'login' }) {
                 </div>
 
                 {/* Google Sign Up */}
-                <button 
-                  onClick={triggerMockGoogleLogin}
-                  className="flex items-center justify-center gap-2.5 border border-border-color rounded-xl py-2.5 hover:bg-gray-50 transition-colors text-[13px] font-bold text-gray-600 cursor-pointer select-none"
-                >
-                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                    <path fill="#EA4335" d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.84 14.97 1 12 1 7.35 1 3.4 3.65 1.5 7.5l3.9 3.03c.92-2.77 3.52-4.49 6.6-4.49z"/>
-                    <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.47h6.44c-.28 1.47-1.11 2.72-2.36 3.56l3.66 2.84c2.14-1.97 3.75-4.88 3.75-8.51z"/>
-                    <path fill="#FBBC05" d="M5.4 14.53c-.24-.72-.37-1.49-.37-2.28s.13-1.56.37-2.28L1.5 6.94C.54 8.87 0 11.02 0 13.25c0 2.23.54 4.38 1.5 6.31l3.9-3.03z"/>
-                    <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.66-2.84c-1.1.74-2.51 1.18-4.3 1.18-3.08 0-5.68-1.72-6.6-4.49l-3.9 3.03C3.4 20.35 7.35 23 12 23z"/>
-                  </svg>
-                  <span>Sign up with Google</span>
-                </button>
+                <div className="relative overflow-hidden w-full flex items-center justify-center">
+                  <button 
+                    onClick={triggerMockGoogleLogin}
+                    className="w-full flex items-center justify-center gap-2.5 border border-border-color rounded-xl py-2.5 hover:bg-gray-50 transition-colors text-[13px] font-bold text-gray-600 cursor-pointer select-none"
+                  >
+                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                      <path fill="#EA4335" d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.84 14.97 1 12 1 7.35 1 3.4 3.65 1.5 7.5l3.9 3.03c.92-2.77 3.52-4.49 6.6-4.49z"/>
+                      <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.47h6.44c-.28 1.47-1.11 2.72-2.36 3.56l3.66 2.84c2.14-1.97 3.75-4.88 3.75-8.51z"/>
+                      <path fill="#FBBC05" d="M5.4 14.53c-.24-.72-.37-1.49-.37-2.28s.13-1.56.37-2.28L1.5 6.94C.54 8.87 0 11.02 0 13.25c0 2.23.54 4.38 1.5 6.31l3.9-3.03z"/>
+                      <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.66-2.84c-1.1.74-2.51 1.18-4.3 1.18-3.08 0-5.68-1.72-6.6-4.49l-3.9 3.03C3.4 20.35 7.35 23 12 23z"/>
+                    </svg>
+                    <span>Sign up with Google</span>
+                  </button>
+                  {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+                    <div 
+                      id="google-btn-signup"
+                      className="absolute inset-0 opacity-0 cursor-pointer pointer-events-auto [&_iframe]:cursor-pointer [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:opacity-0"
+                    />
+                  )}
+                </div>
 
                 <div className="flex items-center gap-3 text-gray-300 text-[11px] font-black uppercase tracking-wider select-none">
                   <div className="h-[1px] bg-gray-100 flex-1" />
@@ -605,18 +628,26 @@ export default function Auth({ initialMode = 'login' }) {
 
                 {/* Social Login Options */}
                 <div className="grid grid-cols-2 gap-3.5">
-                  <button 
-                    onClick={triggerMockGoogleLogin}
-                    className="flex items-center justify-center gap-2 border border-border-color rounded-xl py-2.5 hover:bg-gray-50 transition-colors text-[13px] font-bold text-gray-600 cursor-pointer select-none"
-                  >
-                    <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
-                      <path fill="#EA4335" d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.84 14.97 1 12 1 7.35 1 3.4 3.65 1.5 7.5l3.9 3.03c.92-2.77 3.52-4.49 6.6-4.49z"/>
-                      <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.47h6.44c-.28 1.47-1.11 2.72-2.36 3.56l3.66 2.84c2.14-1.97 3.75-4.88 3.75-8.51z"/>
-                      <path fill="#FBBC05" d="M5.4 14.53c-.24-.72-.37-1.49-.37-2.28s.13-1.56.37-2.28L1.5 6.94C.54 8.87 0 11.02 0 13.25c0 2.23.54 4.38 1.5 6.31l3.9-3.03z"/>
-                      <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.66-2.84c-1.1.74-2.51 1.18-4.3 1.18-3.08 0-5.68-1.72-6.6-4.49l-3.9 3.03C3.4 20.35 7.35 23 12 23z"/>
-                    </svg>
-                    <span>Google</span>
-                  </button>
+                  <div className="relative overflow-hidden w-full flex items-center justify-center">
+                    <button 
+                      onClick={triggerMockGoogleLogin}
+                      className="w-full flex items-center justify-center gap-2 border border-border-color rounded-xl py-2.5 hover:bg-gray-50 transition-colors text-[13px] font-bold text-gray-600 cursor-pointer select-none"
+                    >
+                      <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                        <path fill="#EA4335" d="M12 5.04c1.62 0 3.08.56 4.22 1.65l3.15-3.15C17.45 1.84 14.97 1 12 1 7.35 1 3.4 3.65 1.5 7.5l3.9 3.03c.92-2.77 3.52-4.49 6.6-4.49z"/>
+                        <path fill="#4285F4" d="M23.49 12.27c0-.81-.07-1.59-.2-2.36H12v4.47h6.44c-.28 1.47-1.11 2.72-2.36 3.56l3.66 2.84c2.14-1.97 3.75-4.88 3.75-8.51z"/>
+                        <path fill="#FBBC05" d="M5.4 14.53c-.24-.72-.37-1.49-.37-2.28s.13-1.56.37-2.28L1.5 6.94C.54 8.87 0 11.02 0 13.25c0 2.23.54 4.38 1.5 6.31l3.9-3.03z"/>
+                        <path fill="#34A853" d="M12 23c3.24 0 5.97-1.07 7.96-2.91l-3.66-2.84c-1.1.74-2.51 1.18-4.3 1.18-3.08 0-5.68-1.72-6.6-4.49l-3.9 3.03C3.4 20.35 7.35 23 12 23z"/>
+                      </svg>
+                      <span>Google</span>
+                    </button>
+                    {import.meta.env.VITE_GOOGLE_CLIENT_ID && (
+                      <div 
+                        id="google-btn-login"
+                        className="absolute inset-0 opacity-0 cursor-pointer pointer-events-auto [&_iframe]:cursor-pointer [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:opacity-0"
+                      />
+                    )}
+                  </div>
                   <button 
                     onClick={() => setLoginMethod('phone')}
                     className="flex items-center justify-center gap-2 border border-border-color rounded-xl py-2.5 hover:bg-gray-50 transition-colors text-[13px] font-bold text-gray-600 cursor-pointer select-none"

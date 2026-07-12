@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Routes, Route, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth, api } from './context/AuthContext';
 import Navbar from './components/Navbar';
@@ -63,6 +63,8 @@ function AppContent({
   const location = useLocation();
   const navigate = useNavigate();
   const { user, token, syncCartItems, categories, refreshUserProfile } = useAuth();
+  const userRef = useRef(user);
+  userRef.current = user;
 
   // Sync cart items to database automatically when user is logged in
   useEffect(() => {
@@ -72,7 +74,10 @@ function AppContent({
   // Sync wishlist items to database automatically when user is logged in
   useEffect(() => {
     const syncWishlist = async () => {
-      if (user && token) {
+      if (token) {
+        const currentUser = userRef.current;
+        if (!currentUser) return;
+        if (JSON.stringify(wishlist) === JSON.stringify(currentUser.wishlist)) return;
         try {
           await api.post('/api/cart/sync', { 
             wishlist: wishlist, 
@@ -84,15 +89,20 @@ function AppContent({
       }
     };
     syncWishlist();
-  }, [wishlist, user, token]);
+  }, [wishlist, token]);
 
   // Sync addresses to database automatically when user is logged in
   useEffect(() => {
     const syncAddresses = async () => {
-      if (user && token) {
-        // Skip syncing if state contains guest mock records
-        const hasGuestMock = addresses.some(a => ['addr1', 'addr2', 'addr3'].includes(a.id));
+      if (token) {
+        const currentUser = userRef.current;
+        if (!currentUser) return;
+
+        // Skip syncing if state contains guest mock records (both initial and logout states)
+        const hasGuestMock = addresses.some(a => ['addr1', 'addr2', 'addr3', 'a1', 'a2', 'a3', 'a4'].includes(a.id));
         if (hasGuestMock) return;
+
+        if (JSON.stringify(addresses) === JSON.stringify(currentUser.addresses)) return;
 
         try {
           await api.post('/api/cart/sync', { 
@@ -104,15 +114,20 @@ function AppContent({
       }
     };
     syncAddresses();
-  }, [addresses, user, token]);
+  }, [addresses, token]);
 
   // Sync payment methods to database automatically when user is logged in
   useEffect(() => {
     const syncPaymentMethods = async () => {
-      if (user && token) {
+      if (token) {
+        const currentUser = userRef.current;
+        if (!currentUser) return;
+
         // Skip syncing if state contains guest mock records
         const hasGuestMock = paymentMethods.some(pm => ['pm1', 'pm2', 'pm3', 'pm4'].includes(pm.id));
         if (hasGuestMock) return;
+
+        if (JSON.stringify(paymentMethods) === JSON.stringify(currentUser.payment_methods)) return;
 
         try {
           await api.post('/api/cart/sync', { 
@@ -124,12 +139,16 @@ function AppContent({
       }
     };
     syncPaymentMethods();
-  }, [paymentMethods, user, token]);
+  }, [paymentMethods, token]);
 
   // Sync reward points to database automatically when user is logged in
   useEffect(() => {
     const syncRewardPoints = async () => {
-      if (user && token) {
+      if (token) {
+        const currentUser = userRef.current;
+        if (!currentUser) return;
+
+        if (rewardPoints === currentUser.reward_points) return;
         try {
           await api.post('/api/cart/sync', { 
             reward_points: rewardPoints 
@@ -140,7 +159,7 @@ function AppContent({
       }
     };
     syncRewardPoints();
-  }, [rewardPoints, user, token]);
+  }, [rewardPoints, token]);
 
   // Auto redirect admin user to admin dashboard if they try to access standard pages
   useEffect(() => {
@@ -301,6 +320,7 @@ function AppContent({
   // Load and periodically refresh notifications and user profile updates
   useEffect(() => {
     const fetchNotificationsAndProfile = async () => {
+      const currentUser = userRef.current;
       try {
         const res = await api.get('/api/notifications');
         if (res.data) {
@@ -314,8 +334,8 @@ function AppContent({
               isRead: readIds.includes(n.id)
             }));
 
-          const userNotifs = (user && user.notifications)
-            ? user.notifications
+          const userNotifs = (currentUser && currentUser.notifications)
+            ? currentUser.notifications
                 .filter(n => !deletedIds.includes(n.id))
                 .map(n => ({
                   ...n,
@@ -355,7 +375,7 @@ function AppContent({
 
     const interval = setInterval(fetchNotificationsAndProfile, 10000); // Poll every 10 seconds
     return () => clearInterval(interval);
-  }, [user, token, refreshUserProfile]);
+  }, [token, refreshUserProfile]);
 
   // Synchronize read notifications status to localStorage
   useEffect(() => {

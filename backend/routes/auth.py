@@ -188,23 +188,22 @@ def google_login():
             google_id = f"g_id_{mock_id}"
             profile_image = f"https://api.dicebear.com/7.x/bottts/svg?seed={name}"
         else:
-            # Call Google oauth tokeninfo API to verify the credential securely
-            res = requests.get(f"https://oauth2.googleapis.com/tokeninfo?id_token={credential}")
-            if res.status_code == 200:
-                google_data = res.json()
-                # Verify Aud matches Client ID if set
-                client_id = current_app.config.get('GOOGLE_CLIENT_ID')
-                if client_id and google_data.get('aud') != client_id:
-                    return jsonify({'error': 'Audience mismatch. Invalid Client ID.'}), 401
-                    
-                email = google_data.get('email', '').strip().lower()
-                name = google_data.get('name', '').strip()
-                google_id = google_data.get('sub', '')
-                profile_image = google_data.get('picture', '')
-            else:
-                return jsonify({'error': 'Failed to verify Google token.'}), 401
+            from google.oauth2 import id_token
+            from google.auth.transport import requests as google_requests
+            
+            client_id = current_app.config.get('GOOGLE_CLIENT_ID')
+            # Verify token via official Google library
+            idinfo = id_token.verify_oauth2_token(credential, google_requests.Request(), client_id)
+            
+            email = idinfo.get('email', '').strip().lower()
+            name = idinfo.get('name', '').strip()
+            google_id = idinfo.get('sub', '')
+            profile_image = idinfo.get('picture', '')
+            
+    except ValueError as e:
+        return jsonify({'error': f'Invalid Google token: {str(e)}'}), 401
     except Exception as e:
-        return jsonify({'error': f'Google login failed: {str(e)}'}), 400
+        return jsonify({'error': f'Google verification failed: {str(e)}'}), 401
         
     if not email:
         return jsonify({'error': 'Could not retrieve email from Google.'}), 400

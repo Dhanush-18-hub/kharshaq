@@ -102,8 +102,11 @@ export function AuthProvider({
           // Verify it's not a login attempt returning 401
           const url = error.config.url || '';
           if (!url.includes('/auth/login') && !url.includes('/auth/phone/verify-otp')) {
-            logout();
-            toast.error('Session Expired. Please log in again.');
+            const storedToken = localStorage.getItem('karshaq_token') || sessionStorage.getItem('karshaq_token');
+            if (storedToken) {
+              logout();
+              toast.error('Session Expired. Please log in again.');
+            }
           }
         }
         return Promise.reject(error);

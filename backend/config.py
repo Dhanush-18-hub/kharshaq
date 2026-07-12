@@ -20,7 +20,9 @@ class Config:
             DATABASE_URL = f"postgresql://{pg_user}:{pg_password}@{pg_host}:{pg_port}/{pg_name}"
         else:
             # Fallback to local SQLite DB in workspace root
-            DATABASE_URL = "sqlite:///../karshaq.db"
+            db_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'karshaq.db'))
+            db_path = db_path.replace('\\', '/')
+            DATABASE_URL = f"sqlite:///{db_path}"
             
     SQLALCHEMY_DATABASE_URI = DATABASE_URL
     SQLALCHEMY_TRACK_MODIFICATIONS = False
