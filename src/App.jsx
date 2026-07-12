@@ -489,6 +489,8 @@ function AppContent({
                 cartItems={cartItems} 
                 updateQuantity={updateQuantity} 
                 removeFromCart={removeFromCart} 
+                addresses={addresses}
+                setAddresses={setAddresses}
               />
             </ProtectedRoute>
           } />

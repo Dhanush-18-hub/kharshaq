@@ -29,7 +29,7 @@ export default function Categories({ setActiveTab }) {
   ];
 
   return (
-    <section className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 animate-fadeIn">
+    <section id="categories" className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 animate-fadeIn">
       {/* Section Header */}
       <div className="flex items-center justify-between mb-8">
         <h2 className="text-[32px] lg:text-[38px] font-black text-gray-800 tracking-tight">

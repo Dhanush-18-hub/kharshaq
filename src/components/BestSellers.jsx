@@ -30,7 +30,7 @@ export default function BestSellers({ addToCart, getItemQuantity, updateQuantity
   };
 
   return (
-    <section className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 relative">
+    <section id="bestsellers" className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 relative">
 
       {/* Header */}
       <div className="flex items-center justify-between mb-8">

@@ -3,6 +3,13 @@ import { motion } from 'framer-motion';
 import { ArrowRight, Truck, ShieldCheck, RotateCcw, Flame } from 'lucide-react';
 
 export default function Hero() {
+  const handleScrollTo = (id) => {
+    const element = document.getElementById(id);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <section className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 pt-[140px] pb-10">
       {/* Hero Outer Wrapper */}
@@ -28,7 +35,7 @@ export default function Hero() {
               <span>100% FARM FRESH</span>
               <span className="text-sm">🌿</span>
             </motion.div>
-
+ 
             {/* Main Heading */}
             <motion.h1 
               initial={{ opacity: 0, y: 20 }}
@@ -39,7 +46,7 @@ export default function Hero() {
               From Our Farms<br />
               To <span className="text-primary-green">Your Family</span>
             </motion.h1>
-
+ 
             {/* Subtitle */}
             <motion.p 
               initial={{ opacity: 0, y: 20 }}
@@ -49,7 +56,7 @@ export default function Hero() {
             >
               Handpicked fruits, vegetables & spices delivered fresh to your doorstep.
             </motion.p>
-
+ 
             {/* Action Buttons */}
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
@@ -57,10 +64,16 @@ export default function Hero() {
               transition={{ duration: 0.6, delay: 0.3 }}
               className="flex flex-wrap gap-4 items-center"
             >
-              <button className="flex items-center gap-2 px-8 py-4 bg-primary-green text-white font-bold text-[16px] rounded-[14px] hover:bg-dark-green transition-all shadow-md hover:shadow-lg cursor-pointer hover:translate-x-0.5">
+              <button 
+                onClick={() => handleScrollTo('bestsellers')}
+                className="flex items-center gap-2 px-8 py-4 bg-primary-green text-white font-bold text-[16px] rounded-[14px] hover:bg-dark-green transition-all shadow-md hover:shadow-lg cursor-pointer hover:translate-x-0.5"
+              >
                 Shop Now <ArrowRight className="w-5 h-5 stroke-[2.5]" />
               </button>
-              <button className="px-7 py-4 bg-white border border-gray-200 text-gray-700 font-semibold text-[16px] rounded-[14px] hover:bg-gray-50 transition-colors shadow-sm cursor-pointer">
+              <button 
+                onClick={() => handleScrollTo('categories')}
+                className="px-7 py-4 bg-white border border-gray-200 text-gray-700 font-semibold text-[16px] rounded-[14px] hover:bg-gray-50 transition-colors shadow-sm cursor-pointer"
+              >
                 Explore Categories
               </button>
             </motion.div>

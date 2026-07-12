@@ -297,7 +297,7 @@ def create_app():
                     'title': 'Premium Dry Fruits Special', 
                     'description': 'Pure spices for flavorful meals.', 
                     'discount': '15% OFF', 
-                    'image': '/category_spices.png'
+                    'image': '/category_dryfruits.png'
                 }
             ]
             for o in SEED_OFFERS:

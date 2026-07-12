@@ -97,7 +97,7 @@ export default function ProfileSettings() {
       setLoadingHistory(false);
     };
     fetchHistory();
-  }, [user]);
+  }, [user?.id]);
 
   const onUpdateSettings = async (data) => {
     // Filter out passwords if empty
