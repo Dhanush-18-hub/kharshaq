@@ -31,7 +31,7 @@ export default function Checkout({ cartItems, updateQuantity, removeFromCart, ad
         setSelectedAddress(`${defaultAddr.street}, ${defaultAddr.area}, ${defaultAddr.city}, ${defaultAddr.state} - ${defaultAddr.pincode}`);
       }
     }
-  }, [actualAddresses, selectedAddress]);
+  }, [addresses, selectedAddress]);
 
   const [formData, setFormData] = useState({
     name: user?.name || '',

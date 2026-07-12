@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Leaf, Search, ShoppingCart, MapPin, ChevronDown, Menu, X, User, ShoppingBag, Heart, Star, CreditCard, LogOut, Bell, HelpCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -10,6 +10,22 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [productsDropdownOpen, setProductsDropdownOpen] = useState(false);
   const [mobileProductsOpen, setMobileProductsOpen] = useState(false);
+
+  const dropdownRef = useRef(null);
+
+  // Close dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const { user, logout, products, categories } = useAuth();
   const navigate = useNavigate();
@@ -285,9 +301,8 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
               </span>
             </button>
 
-            {/* User Profile / Login */}
             {user ? (
-              <div className="relative">
+              <div className="relative" ref={dropdownRef}>
                 <button
                   onClick={() => setDropdownOpen(!dropdownOpen)}
                   className="flex items-center gap-3 px-4 py-1.5 border border-border-color bg-white hover:bg-gray-50 text-gray-700 rounded-2xl transition-all cursor-pointer select-none shadow-sm"

@@ -145,6 +145,12 @@ export function AuthProvider({
             if (setPaymentMethods) {
               setPaymentMethods(res.data.user.payment_methods || []);
             }
+            if (setRewardTransactions) {
+              setRewardTransactions(res.data.user.reward_transactions || []);
+            }
+            if (setRewardVouchers) {
+              setRewardVouchers(res.data.user.reward_vouchers || []);
+            }
           }
         } catch (err) {
           console.error('Auto login check failed:', err);
@@ -178,6 +184,15 @@ export function AuthProvider({
         }
         if (setPaymentMethods) {
           setPaymentMethods(res.data.payment_methods || []);
+        }
+        if (setRewardPoints) {
+          setRewardPoints(res.data.reward_points !== undefined ? res.data.reward_points : 0);
+        }
+        if (setRewardTransactions) {
+          setRewardTransactions(res.data.reward_transactions || []);
+        }
+        if (setRewardVouchers) {
+          setRewardVouchers(res.data.reward_vouchers || []);
         }
         return res.data;
       }
@@ -385,7 +400,7 @@ export function AuthProvider({
   const syncCartItems = async (items) => {
     if (user && token) {
       try {
-        await api.post('/api/cart/sync', { cart: items });
+        await api.post('/api/cart/sync', { cart: items, overwrite_cart: true });
       } catch (err) {
         console.error('Failed to sync cart to db:', err);
       }
@@ -397,7 +412,7 @@ export function AuthProvider({
     if (user && token) {
       const updatedOrders = [order, ...(user.orders || [])];
       try {
-        const res = await api.post('/api/cart/sync', { orders: updatedOrders, cart: [] });
+        const res = await api.post('/api/cart/sync', { orders: updatedOrders, cart: [], overwrite_cart: true });
         if (res.data) {
           // Update local user state
           setUser(prev => ({

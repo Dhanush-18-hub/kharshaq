@@ -23,6 +23,8 @@ class User(db.Model):
     notifications = db.Column(db.JSON, default=list, nullable=False)
     
     reward_points = db.Column(db.Integer, default=0, nullable=False)
+    reward_transactions = db.Column(db.JSON, default=list, nullable=False)
+    reward_vouchers = db.Column(db.JSON, default=list, nullable=False)
     membership_level = db.Column(db.String(50), default='Bronze', nullable=False)
     role = db.Column(db.String(20), default='customer', nullable=False)
     
@@ -44,6 +46,8 @@ class User(db.Model):
             'payment_methods': self.payment_methods,
             'notifications': self.notifications,
             'reward_points': self.reward_points,
+            'reward_transactions': self.reward_transactions,
+            'reward_vouchers': self.reward_vouchers,
             'membership_level': self.membership_level,
             'role': self.role,
             'created_at': self.created_at.isoformat() if self.created_at else None,

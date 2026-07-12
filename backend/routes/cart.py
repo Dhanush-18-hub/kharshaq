@@ -17,29 +17,32 @@ def sync_cart():
     guest_cart = data.get('cart', [])
     guest_wishlist = data.get('wishlist', [])
     
-    # 1. Merge Cart Items
-    # db_cart is stored as a list of dicts. We want to convert guest_cart and db_cart into key-value structures
-    merged_cart = {}
-    
-    # Load existing cart items
-    db_cart = user.cart or []
-    for item in db_cart:
-        item_id = item.get('id')
-        if item_id:
-            merged_cart[item_id] = item
-            
-    # Merge guest cart items
-    for item in guest_cart:
-        item_id = item.get('id')
-        if not item_id:
-            continue
-        if item_id in merged_cart:
-            # Add quantities up
-            merged_cart[item_id]['quantity'] = merged_cart[item_id].get('quantity', 0) + item.get('quantity', 1)
-        else:
-            merged_cart[item_id] = item
-            
-    user.cart = list(merged_cart.values())
+    # 1. Merge or Overwrite Cart Items
+    if data.get('overwrite_cart', False):
+        user.cart = guest_cart
+    else:
+        # db_cart is stored as a list of dicts. We want to convert guest_cart and db_cart into key-value structures
+        merged_cart = {}
+        
+        # Load existing cart items
+        db_cart = user.cart or []
+        for item in db_cart:
+            item_id = item.get('id')
+            if item_id:
+                merged_cart[item_id] = item
+                
+        # Merge guest cart items
+        for item in guest_cart:
+            item_id = item.get('id')
+            if not item_id:
+                continue
+            if item_id in merged_cart:
+                # Add quantities up
+                merged_cart[item_id]['quantity'] = merged_cart[item_id].get('quantity', 0) + item.get('quantity', 1)
+            else:
+                merged_cart[item_id] = item
+                
+        user.cart = list(merged_cart.values())
     
     # 2. Merge Wishlist Items (keep unique IDs)
     if data.get('overwrite_wishlist', False):
@@ -66,6 +69,14 @@ def sync_cart():
     if reward_points is not None:
         user.reward_points = reward_points
         
+    reward_transactions = data.get('reward_transactions')
+    if reward_transactions is not None:
+        user.reward_transactions = reward_transactions
+        
+    reward_vouchers = data.get('reward_vouchers')
+    if reward_vouchers is not None:
+        user.reward_vouchers = reward_vouchers
+        
     db.session.commit()
     
     return jsonify({
@@ -76,5 +87,7 @@ def sync_cart():
         'orders': user.orders,
         'payment_methods': user.payment_methods,
         'reward_points': user.reward_points,
+        'reward_transactions': user.reward_transactions,
+        'reward_vouchers': user.reward_vouchers,
         'membership_level': user.membership_level
     }), 200

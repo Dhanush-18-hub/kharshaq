@@ -219,9 +219,15 @@ export default function MyAddresses({ addresses, setAddresses }) {
               <div className="overflow-hidden">
                 <h3 className="text-[16px] font-black text-gray-800 leading-tight truncate">{user?.name || 'Dhanush Kumar'}</h3>
                 <p className="text-[11px] text-gray-400 font-bold leading-tight truncate mt-1">{user?.email || 'koppladk4@gmail.com'}</p>
-                <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-primary-green bg-light-green border border-emerald-50 px-2.5 py-0.5 rounded-full mt-2.5">
-                  Karshaq Plus 👑
-                </span>
+                {user?.membership_level === 'Plus' || user?.membership_level === 'Karshaq Plus' ? (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-primary-green bg-light-green border border-emerald-50 px-2.5 py-0.5 rounded-full mt-2.5">
+                    Karshaq Plus 👑
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-gray-500 bg-gray-50 border border-gray-200 px-2.5 py-0.5 rounded-full mt-2.5">
+                    Standard Member
+                  </span>
+                )}
               </div>
             </div>
 

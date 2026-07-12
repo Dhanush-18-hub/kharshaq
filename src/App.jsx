@@ -161,6 +161,54 @@ function AppContent({
     syncRewardPoints();
   }, [rewardPoints, token]);
 
+  // Sync reward transactions to database automatically when user is logged in
+  useEffect(() => {
+    const syncRewardTransactions = async () => {
+      if (token) {
+        const currentUser = userRef.current;
+        if (!currentUser) return;
+        
+        // Skip guest mockup transaction records
+        const hasGuestMock = rewardTransactions.some(t => ['rt1', 'rt2', 'rt3', 'rt4'].includes(t.id));
+        if (hasGuestMock) return;
+
+        if (JSON.stringify(rewardTransactions) === JSON.stringify(currentUser.reward_transactions)) return;
+        try {
+          await api.post('/api/cart/sync', { 
+            reward_transactions: rewardTransactions 
+          });
+        } catch (err) {
+          console.error('Failed to sync reward transactions to db:', err);
+        }
+      }
+    };
+    syncRewardTransactions();
+  }, [rewardTransactions, token]);
+
+  // Sync reward vouchers to database automatically when user is logged in
+  useEffect(() => {
+    const syncRewardVouchers = async () => {
+      if (token) {
+        const currentUser = userRef.current;
+        if (!currentUser) return;
+        
+        // Skip guest mockup voucher records
+        const hasGuestMock = rewardVouchers.some(v => ['rv1', 'rv2', 'rv3'].includes(v.id));
+        if (hasGuestMock) return;
+
+        if (JSON.stringify(rewardVouchers) === JSON.stringify(currentUser.reward_vouchers)) return;
+        try {
+          await api.post('/api/cart/sync', { 
+            reward_vouchers: rewardVouchers 
+          });
+        } catch (err) {
+          console.error('Failed to sync reward vouchers to db:', err);
+        }
+      }
+    };
+    syncRewardVouchers();
+  }, [rewardVouchers, token]);
+
   // Auto redirect admin user to admin dashboard if they try to access standard pages
   useEffect(() => {
     if (user && user.role === 'admin' && !location.pathname.startsWith('/admin')) {
@@ -174,8 +222,8 @@ function AppContent({
       setAddresses(user.addresses || []);
       setPaymentMethods(user.payment_methods || []);
       setRewardPoints(user.reward_points !== undefined ? user.reward_points : 0);
-      setRewardTransactions([]);
-      setRewardVouchers([]);
+      setRewardTransactions(user.reward_transactions || []);
+      setRewardVouchers(user.reward_vouchers || []);
     } else {
       setAddresses([
         {
