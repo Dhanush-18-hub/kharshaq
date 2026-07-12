@@ -282,7 +282,7 @@ export default function CategoryPage({ type, addToCart, getItemQuantity, updateQ
           {/* Title & Count */}
           <div className="flex items-center gap-2">
             <h2 className="text-[26px] lg:text-[30px] font-black text-gray-800 tracking-tight capitalize flex items-center gap-1.5">
-              All {data.title} <Leaf className="w-5.5 h-5.5 text-primary-green" />
+              {selectedSubcat === 'all' ? `All ${data.title}` : (data.subcategories.find(s => s.id === selectedSubcat)?.title || `All ${data.title}`)} <Leaf className="w-5.5 h-5.5 text-primary-green" />
             </h2>
             <span className="text-[14px] text-gray-400 font-semibold mt-1">
               ({filteredProducts.length} items found)

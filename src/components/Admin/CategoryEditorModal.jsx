@@ -44,6 +44,7 @@ export default function CategoryEditorModal({ category, onClose, refresh }) {
   // Products assignment state
   const [assignedProductIds, setAssignedProductIds] = useState([]);
   const [productSearch, setProductSearch] = useState('');
+  const [productSubcats, setProductSubcats] = useState({}); // { productId: subcatSlug }
 
   // Load category properties on mount/change
   useEffect(() => {
@@ -71,10 +72,16 @@ export default function CategoryEditorModal({ category, onClose, refresh }) {
       setMetaDescription(category.metaDescription || '');
 
       // Identify products matching this category slug
-      const matchingIds = (globalProducts || [])
-        .filter(p => p.category?.toLowerCase() === category.slug?.toLowerCase())
-        .map(p => p.id);
-      setAssignedProductIds(matchingIds);
+      const matchingProds = (globalProducts || []).filter(
+        p => p.category?.toLowerCase() === category.slug?.toLowerCase()
+      );
+      setAssignedProductIds(matchingProds.map(p => p.id));
+
+      const subcatMap = {};
+      matchingProds.forEach(p => {
+        subcatMap[p.id] = p.subcat || 'all';
+      });
+      setProductSubcats(subcatMap);
     } else {
       // Default feature cards for new categories
       setFeatures([
@@ -174,6 +181,13 @@ export default function CategoryEditorModal({ category, onClose, refresh }) {
     }
   };
 
+  const handleProductSubcatChange = (prodId, subcatSlug) => {
+    setProductSubcats(prev => ({
+      ...prev,
+      [prodId]: subcatSlug
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!name.trim()) return toast.error('Category Name is required.');
@@ -217,14 +231,17 @@ export default function CategoryEditorModal({ category, onClose, refresh }) {
       for (const prod of (globalProducts || [])) {
         const isSelected = assignedProductIds.includes(prod.id);
         const wasSelected = prod.category?.toLowerCase() === finalSlug;
+        const currentSubcat = productSubcats[prod.id] || 'all';
 
-        if (isSelected && !wasSelected) {
-          // Assign to this category
-          await api.put(`/api/admin/products/${prod.id}`, {
-            ...prod,
-            category: finalSlug,
-            subcat: prod.subcat || 'all'
-          });
+        if (isSelected) {
+          if (!wasSelected || prod.subcat !== currentSubcat) {
+            // Assign or update subcategory for this product
+            await api.put(`/api/admin/products/${prod.id}`, {
+              ...prod,
+              category: finalSlug,
+              subcat: currentSubcat
+            });
+          }
         } else if (!isSelected && wasSelected) {
           // Remove from this category - set to 'others' or clear
           await api.put(`/api/admin/products/${prod.id}`, {
@@ -699,24 +716,43 @@ export default function CategoryEditorModal({ category, onClose, refresh }) {
                   return (
                     <div
                       key={p.id}
-                      onClick={() => toggleProductAssignment(p.id)}
-                      className={`flex items-center justify-between p-3.5 rounded-xl cursor-pointer transition select-none ${
+                      className={`flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-xl cursor-pointer transition select-none gap-3 ${
                         isAssigned ? 'bg-emerald-50/40 border border-emerald-100' : 'hover:bg-gray-50 border border-transparent'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1" onClick={() => toggleProductAssignment(p.id)}>
                         <img src={p.image} alt={p.name} className="w-9 h-9 object-cover rounded-lg border bg-white" />
                         <div>
                           <h5 className="font-extrabold text-[12.5px] text-gray-800">{p.name}</h5>
                           <span className="text-[10px] text-gray-400 font-bold block mt-0.5">Price: ₹{p.price} | Current Category: <span className="uppercase text-[9.5px] text-emerald-600 font-black">{p.category}</span></span>
                         </div>
                       </div>
-                      <input
-                        type="checkbox"
-                        checked={isAssigned}
-                        readOnly
-                        className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
-                      />
+                      
+                      <div className="flex items-center gap-3 self-end sm:self-auto select-none" onClick={(e) => e.stopPropagation()}>
+                        {isAssigned && (
+                          <div className="flex items-center gap-1.5 mr-2">
+                            <span className="text-[10.5px] font-bold text-gray-400 uppercase">Subcat:</span>
+                            <select
+                              value={productSubcats[p.id] || 'all'}
+                              onChange={(e) => handleProductSubcatChange(p.id, e.target.value)}
+                              className="bg-white border border-gray-200 rounded-lg px-2.5 py-1 font-semibold text-gray-700 text-[11px] focus:outline-none focus:ring-1 focus:ring-emerald-500"
+                            >
+                              {subcategories.map(sub => (
+                                <option key={sub.slug} value={sub.slug}>{sub.name}</option>
+                              ))}
+                              {!subcategories.some(s => s.slug === 'all') && (
+                                <option value="all">All</option>
+                              )}
+                            </select>
+                          </div>
+                        )}
+                        <input
+                          type="checkbox"
+                          checked={isAssigned}
+                          onChange={() => toggleProductAssignment(p.id)}
+                          className="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-gray-300 rounded cursor-pointer"
+                        />
+                      </div>
                     </div>
                   );
                 })}
