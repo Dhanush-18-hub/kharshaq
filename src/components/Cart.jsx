@@ -489,11 +489,11 @@ export default function Cart({
             >
               <div>
                 {/* Product image wrapper */}
-                <div className="w-full aspect-square bg-[#FAFAF9]/80 rounded-xl flex items-center justify-center p-3 mb-3 overflow-hidden relative">
+                <div className="w-full aspect-square bg-gray-50 rounded-xl mb-3 overflow-hidden relative">
                   <img
                     src={prod.image}
                     alt={prod.name}
-                    className="max-h-[100px] max-w-[100px] object-cover rounded-full mix-blend-multiply group-hover:scale-104 transition-transform duration-350"
+                    className="w-full h-full object-cover group-hover:scale-104 transition-transform duration-350"
                   />
                 </div>
 

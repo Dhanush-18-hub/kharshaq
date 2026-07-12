@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import {
   Star,
@@ -9,6 +9,8 @@ import {
   List,
   Heart,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Truck,
   RotateCcw,
   ShieldCheck,
@@ -24,6 +26,14 @@ import { toast } from 'react-hot-toast';
 
 export default function CategoryPage({ type, addToCart, getItemQuantity, updateQuantity, selectedProductId, setSelectedProductId, toggleWishlist, isInWishlist }) {
   const { products, categories } = useAuth();
+  const subcatSliderRef = useRef(null);
+
+  const scrollSlider = (direction) => {
+    if (subcatSliderRef.current) {
+      const scrollAmount = direction === 'left' ? -240 : 240;
+      subcatSliderRef.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const getCategoryData = () => {
     const normalizedType = type.toLowerCase().replace(/\s+/g, '');
@@ -245,29 +255,92 @@ export default function CategoryPage({ type, addToCart, getItemQuantity, updateQ
       </section>
 
       {/* Section 2: Subcategory Circular Filters */}
-      <section className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-6">
-        <div className="bg-white rounded-2xl border border-border-color p-4 shadow-card flex items-center gap-6 overflow-x-auto scrollbar-none select-none">
+      <section className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-6 relative group/slider">
+        {/* Left Scroll Button */}
+        <button
+          onClick={() => scrollSlider('left')}
+          className="absolute left-2 lg:left-8 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white border border-border-color shadow-md rounded-full flex items-center justify-center text-gray-500 hover:text-primary-green hover:border-primary-green transition-all hover:scale-105 cursor-pointer opacity-0 group-hover/slider:opacity-100"
+        >
+          <ChevronLeft className="w-5 h-5" />
+        </button>
+
+        {/* Right Scroll Button */}
+        <button
+          onClick={() => scrollSlider('right')}
+          className="absolute right-2 lg:right-8 top-1/2 -translate-y-1/2 z-10 w-9 h-9 bg-white border border-border-color shadow-md rounded-full flex items-center justify-center text-gray-500 hover:text-primary-green hover:border-primary-green transition-all hover:scale-105 cursor-pointer opacity-0 group-hover/slider:opacity-100"
+        >
+          <ChevronRight className="w-5 h-5" />
+        </button>
+
+        <div
+          ref={subcatSliderRef}
+          className="bg-white rounded-3xl border border-border-color p-5 shadow-card flex items-stretch gap-4 overflow-x-auto scrollbar-none select-none scroll-smooth"
+        >
+          {/* Static All subcategory (only if 'all' is not already defined in database subcategories) */}
+          {!data.subcategories.some(s => s.id === 'all') && (() => {
+            const isAllActive = selectedSubcat === 'all';
+            const allCount = data.products.length;
+            return (
+              <button
+                onClick={() => setSelectedSubcat('all')}
+                className={`flex flex-col items-center justify-between shrink-0 w-[115px] md:w-[130px] p-4.5 rounded-2xl cursor-pointer transition-all duration-300 border ${
+                  isAllActive
+                    ? 'bg-[#E8F5E9]/40 border-primary-green shadow-sm'
+                    : 'bg-white border-gray-100 hover:border-gray-200'
+                }`}
+              >
+                <div className={`w-[70px] h-[70px] md:w-[80px] md:h-[80px] rounded-full overflow-hidden flex items-center justify-center bg-gray-50/50 transition-all duration-300 ${
+                  isAllActive ? 'scale-106' : 'hover:scale-103'
+                }`}>
+                  <img
+                    src={data.heroImg}
+                    alt={`All ${data.title}`}
+                    className="w-full h-full object-cover transition-transform duration-300"
+                  />
+                </div>
+                <div className="text-center mt-3 w-full">
+                  <span className={`text-[13px] font-black block truncate leading-tight ${isAllActive ? 'text-primary-green' : 'text-gray-700'}`}>
+                    All {data.title}
+                  </span>
+                  <span className="text-[11px] text-gray-400 font-bold block mt-1 select-none">
+                    {allCount > 0 ? `${allCount}+` : '0'} Items
+                  </span>
+                </div>
+              </button>
+            );
+          })()}
+
           {data.subcategories.map((sub) => {
             const isActive = selectedSubcat === sub.id;
+            const count = sub.id === 'all' ? data.products.length : data.products.filter(p => p.subcat === sub.id).length;
             return (
               <button
                 key={sub.id}
                 onClick={() => setSelectedSubcat(sub.id)}
-                className={`flex flex-col items-center gap-2 shrink-0 py-1.5 px-3 rounded-2xl cursor-pointer transition-all duration-200 ${isActive ? 'bg-light-green border border-emerald-100' : 'border border-transparent'
-                  }`}
+                className={`flex flex-col items-center justify-between shrink-0 w-[115px] md:w-[130px] p-4.5 rounded-2xl cursor-pointer transition-all duration-300 border ${
+                  isActive
+                    ? 'bg-[#E8F5E9]/40 border-primary-green shadow-sm'
+                    : 'bg-white border-gray-100 hover:border-gray-200'
+                }`}
               >
                 {/* Circular image icon */}
-                <div className={`w-[60px] h-[60px] rounded-full border border-border-color overflow-hidden flex items-center justify-center bg-gray-50 transition-transform ${isActive ? 'scale-106' : 'hover:scale-103'
-                  }`}>
+                <div className={`w-[70px] h-[70px] md:w-[80px] md:h-[80px] rounded-full overflow-hidden flex items-center justify-center bg-gray-50/50 transition-all duration-300 ${
+                  isActive ? 'scale-106' : 'hover:scale-103'
+                }`}>
                   <img
                     src={sub.image}
                     alt={sub.title}
-                    className="max-h-[50px] max-w-[50px] object-cover mix-blend-multiply"
+                    className="w-full h-full object-cover transition-transform duration-300"
                   />
                 </div>
-                <span className={`text-[12.5px] font-bold ${isActive ? 'text-primary-green' : 'text-gray-600'}`}>
-                  {sub.title}
-                </span>
+                <div className="text-center mt-3 w-full">
+                  <span className={`text-[13px] font-black block truncate leading-tight ${isActive ? 'text-primary-green' : 'text-gray-700'}`}>
+                    {sub.title}
+                  </span>
+                  <span className="text-[11px] text-gray-400 font-bold block mt-1 select-none">
+                    {count > 0 ? `${count}+` : '0'} Items
+                  </span>
+                </div>
               </button>
             );
           })}
