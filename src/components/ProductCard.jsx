@@ -63,13 +63,13 @@ export default function ProductCard({
         /* GRID MODE */
         <>
           {/* Product Image Wrapper (occupies ~55-60% of card height) */}
-          <div className="w-full h-[145px] bg-white rounded-xl overflow-hidden relative flex items-center justify-center p-2.5 border border-gray-50/70 mt-4 mb-2 shrink-0">
+          <div className="w-full h-[145px] bg-white rounded-xl overflow-hidden relative flex items-center justify-center mt-4 mb-2 shrink-0">
             <img
               src={imgSrc}
               alt={product.name}
               loading="lazy"
               onError={handleImageError}
-              className="max-w-full max-h-full object-contain group-hover:scale-[1.03] transition-transform duration-250"
+              className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-250"
             />
           </div>
 

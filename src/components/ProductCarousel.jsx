@@ -98,15 +98,16 @@ export default function ProductCarousel({
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
             {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                addToCart={addToCart}
-                getItemQuantity={getItemQuantity}
-                updateQuantity={updateQuantity}
-                toggleWishlist={toggleWishlist}
-                isInWishlist={isInWishlist}
-              />
+              <div key={product.id} className="min-w-[210px] md:min-w-[230px] max-w-[230px] w-full flex-shrink-0">
+                <ProductCard
+                  product={product}
+                  addToCart={addToCart}
+                  getItemQuantity={getItemQuantity}
+                  updateQuantity={updateQuantity}
+                  toggleWishlist={toggleWishlist}
+                  isInWishlist={isInWishlist}
+                />
+              </div>
             ))}
           </div>
         </div>
