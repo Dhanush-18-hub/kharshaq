@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Leaf, Search, ShoppingCart, MapPin, ChevronDown, Menu, X, User, ShoppingBag, Heart, Star, CreditCard, LogOut, Bell, HelpCircle } from 'lucide-react';
+import { Leaf, Search, ShoppingCart, MapPin, ChevronDown, Menu, X, User, ShoppingBag, Heart, Star, CreditCard, LogOut, Bell, HelpCircle, Truck, Clock, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -27,8 +27,35 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
     };
   }, []);
 
-  const { user, logout, products, categories } = useAuth();
+  const { user, logout, products, categories, homepageData } = useAuth();
   const navigate = useNavigate();
+
+  // CMS Announcement Bar Logic
+  const announcementsList = homepageData?.announcements || [];
+  const cmsSettings = homepageData?.settings || {};
+  const isScrolling = cmsSettings.announcements_scrolling ?? true;
+  const scrollSpeed = cmsSettings.announcements_speed ?? 20;
+
+  const [activeAnnIdx, setActiveAnnIdx] = useState(0);
+
+  useEffect(() => {
+    if (isScrolling || announcementsList.length <= 1) return;
+    const interval = setInterval(() => {
+      setActiveAnnIdx((prev) => (prev + 1) % announcementsList.length);
+    }, 4000);
+    return () => clearInterval(interval);
+  }, [isScrolling, announcementsList]);
+
+  const renderAnnouncementIcon = (iconName) => {
+    if (!iconName) return null;
+    const icons = {
+      Truck: <Truck className="w-4 h-4 inline-block mr-1.5 align-text-bottom stroke-[2.2]" />,
+      Leaf: <Leaf className="w-4 h-4 inline-block mr-1.5 align-text-bottom stroke-[2.2]" />,
+      Clock: <Clock className="w-4 h-4 inline-block mr-1.5 align-text-bottom stroke-[2.2]" />,
+      ShieldCheck: <ShieldCheck className="w-4 h-4 inline-block mr-1.5 align-text-bottom stroke-[2.2]" />,
+    };
+    return icons[iconName] || <span className="mr-1.5">{iconName}</span>;
+  };
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -63,9 +90,56 @@ export default function Navbar({ activeTab, setActiveTab, cartCount, addToCart, 
   return (
     <header className="w-full fixed top-0 left-0 z-50 bg-white">
       {/* Top Announcement Bar */}
-      <div className="w-full bg-dark-green text-white py-2.5 px-4 text-center text-[14px] font-medium tracking-wide flex justify-center items-center select-none">
-        <span>🚚 Free delivery on orders above ₹499 &nbsp;|&nbsp; Farm Fresh. &nbsp;|&nbsp; Chemical Free. 🌿</span>
-      </div>
+      {announcementsList.length === 0 ? (
+        <div className="w-full bg-dark-green text-white py-2.5 px-4 text-center text-[14px] font-medium tracking-wide flex justify-center items-center select-none">
+          <span>🚚 Free delivery on orders above ₹499 &nbsp;|&nbsp; Farm Fresh. &nbsp;|&nbsp; Chemical Free. 🌿</span>
+        </div>
+      ) : isScrolling ? (
+        <div className="w-full overflow-hidden whitespace-nowrap py-2.5 bg-dark-green text-white text-[14px] font-medium tracking-wide flex items-center relative select-none">
+          <style>{`
+            @keyframes marquee {
+              0% { transform: translateX(0%); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-marquee-custom {
+              display: inline-block;
+              white-space: nowrap;
+              animation: marquee ${scrollSpeed}s linear infinite;
+            }
+            .animate-marquee-custom:hover {
+              animation-play-state: paused;
+            }
+          `}</style>
+          <div className="w-full flex">
+            <div className="animate-marquee-custom">
+              {announcementsList.map((ann, i) => (
+                <span key={ann.id || i} style={{ color: ann.text_color }} className="mx-12 inline-flex items-center">
+                  {renderAnnouncementIcon(ann.icon)}
+                  {ann.text}
+                </span>
+              ))}
+            </div>
+            <div className="animate-marquee-custom" aria-hidden="true">
+              {announcementsList.map((ann, i) => (
+                <span key={`dup-${ann.id || i}`} style={{ color: ann.text_color }} className="mx-12 inline-flex items-center">
+                  {renderAnnouncementIcon(ann.icon)}
+                  {ann.text}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          style={{ backgroundColor: announcementsList[activeAnnIdx]?.bg_color || '#1B5E20' }}
+          className="w-full text-white py-2.5 px-4 text-center text-[14px] font-medium tracking-wide flex justify-center items-center select-none transition-all duration-500"
+        >
+          <span style={{ color: announcementsList[activeAnnIdx]?.text_color || '#FFFFFF' }} className="inline-flex items-center">
+            {renderAnnouncementIcon(announcementsList[activeAnnIdx]?.icon)}
+            {announcementsList[activeAnnIdx]?.text}
+          </span>
+        </div>
+      )}
 
       {/* Main Navbar */}
       <div className="w-full border-b border-border-color bg-white/95 backdrop-blur-md">

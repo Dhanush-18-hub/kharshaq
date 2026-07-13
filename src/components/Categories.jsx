@@ -1,32 +1,40 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Categories({ setActiveTab }) {
-  const { categories } = useAuth();
+  const { homepageData } = useAuth();
+  const navigate = useNavigate();
 
-  const dynamicCategories = categories && categories.length > 0 ? categories.map(cat => {
-    let tabId = 'Fruits';
-    const catNameLower = cat.name.toLowerCase();
-    if (catNameLower.includes('dry')) tabId = 'Dry Fruits';
-    else if (catNameLower.includes('fruit')) tabId = 'Fruits';
-    else if (catNameLower.includes('veg')) tabId = 'Vegetables';
-    else if (catNameLower.includes('spice')) tabId = 'Spices';
-    else if (catNameLower.includes('other')) tabId = 'Offers';
-
-    return {
-      id: cat.name.toLowerCase().replace(/\s+/g, ''),
-      title: cat.name,
-      image: cat.image || '/category_fruits.png',
-      bg: 'bg-white',
-      tabId: tabId
-    };
-  }) : [
-    { id: 'fruits', title: 'Fruits', image: '/category_fruits.png', bg: 'bg-white', tabId: 'Fruits' },
-    { id: 'vegetables', title: 'Vegetables', image: '/category_vegetables.png', bg: 'bg-white', tabId: 'Vegetables' },
-    { id: 'spices', title: 'Spices', image: '/category_spices.png', bg: 'bg-white', tabId: 'Spices' },
-    { id: 'dryfruits', title: 'Dry Fruits', image: '/category_dryfruits.png', bg: 'bg-white', tabId: 'Dry Fruits' }
+  // Load from homepageData, or fallback
+  const list = homepageData?.categories || [];
+  
+  const dynamicCategories = list.length > 0 ? list.map(cat => ({
+    id: cat.id,
+    slug: cat.slug,
+    title: cat.name,
+    image: cat.image || '/category_fruits.png',
+    bg: cat.bg_color || 'bg-white',
+    link: cat.link
+  })) : [
+    { id: 'fruits', slug: 'fruits', title: 'Fruits', image: '/category_fruits.png', bg: '#FFF', link: '/fruits' },
+    { id: 'vegetables', slug: 'vegetables', title: 'Vegetables', image: '/category_vegetables.png', bg: '#FFF', link: '/vegetables' },
+    { id: 'spices', slug: 'spices', title: 'Spices', image: '/category_spices.png', bg: '#FFF', link: '/spices' },
+    { id: 'dryfruits', slug: 'dryfruits', title: 'Dry Fruits', image: '/category_dryfruits.png', bg: '#FFF', link: '/dryfruits' }
   ];
+
+  const handleCardClick = (cat) => {
+    if (cat.link) {
+      if (cat.link.startsWith('http')) {
+        window.location.href = cat.link;
+      } else {
+        navigate(cat.link);
+      }
+    } else {
+      setActiveTab(cat.slug);
+    }
+  };
 
   return (
     <section id="categories" className="w-full max-w-[1440px] mx-auto px-6 lg:px-12 py-10 animate-fadeIn">
@@ -48,12 +56,13 @@ export default function Categories({ setActiveTab }) {
         {dynamicCategories.map((cat, index) => (
           <motion.div
             key={cat.id}
-            onClick={() => setActiveTab(cat.tabId)}
+            onClick={() => handleCardClick(cat)}
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: index * 0.05 }}
             whileHover={{ y: -8 }}
-            className={`relative rounded-[22px] p-5 ${cat.bg} border border-border-color shadow-card hover:shadow-premium transition-all duration-300 flex flex-col items-center cursor-pointer overflow-hidden group select-none`}
+            style={{ backgroundColor: cat.bg.startsWith('#') ? cat.bg : undefined }}
+            className={`relative rounded-[22px] p-5 ${!cat.bg.startsWith('#') ? cat.bg : 'bg-white'} border border-border-color shadow-card hover:shadow-premium transition-all duration-300 flex flex-col items-center cursor-pointer overflow-hidden group select-none`}
           >
             {/* Circle Accent behind product */}
             <div className="w-[120px] h-[120px] rounded-full bg-light-green/40 absolute top-4 group-hover:scale-110 transition-transform duration-300 -z-0" />
@@ -63,6 +72,7 @@ export default function Categories({ setActiveTab }) {
               <img
                 src={cat.image}
                 alt={cat.title}
+                loading="lazy"
                 className="max-h-[110px] max-w-[110px] object-cover rounded-full mix-blend-multiply group-hover:scale-108 transition-transform duration-300"
               />
             </div>

@@ -250,6 +250,8 @@ def add_product():
         featured=data.get('featured', False),
         organic=data.get('organic', False),
         best_seller=data.get('bestSeller', False),
+        trending=data.get('trending', False),
+        new_arrival=data.get('newArrival', False),
         availability=data.get('availability', True)
     )
     
@@ -277,6 +279,8 @@ def edit_product(id):
     product.featured = data.get('featured', product.featured)
     product.organic = data.get('organic', product.organic)
     product.best_seller = data.get('bestSeller', product.best_seller)
+    product.trending = data.get('trending', product.trending)
+    product.new_arrival = data.get('newArrival', product.new_arrival)
     product.availability = data.get('availability', product.availability)
     
     original_price = data.get('originalPrice')

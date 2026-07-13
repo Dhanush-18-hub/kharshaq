@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Routes, Route, useLocation, useNavigate, Navigate, useParams } from 'react-router-dom';
 import { AuthProvider, useAuth, api } from './context/AuthContext';
 import Navbar from './components/Navbar';
@@ -7,6 +7,12 @@ import Categories from './components/Categories';
 import PromoSection from './components/PromoSection';
 import BestSellers from './components/BestSellers';
 import BottomFeatures from './components/BottomFeatures';
+import FeaturedProducts from './components/FeaturedProducts';
+import TrendingProducts from './components/TrendingProducts';
+import NewArrivals from './components/NewArrivals';
+import SeasonalCollections from './components/SeasonalCollections';
+import Testimonials from './components/Testimonials';
+import Newsletter from './components/Newsletter';
 import AboutUs from './components/AboutUs';
 import CategoryPage from './components/CategoryPage';
 import Offers from './components/Offers';
@@ -62,7 +68,7 @@ function AppContent({
   const [selectedProductId, setSelectedProductId] = useState(null);
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, token, syncCartItems, categories, refreshUserProfile } = useAuth();
+  const { user, token, syncCartItems, categories, refreshUserProfile, homepageData } = useAuth();
   const userRef = useRef(user);
   userRef.current = user;
 
@@ -366,64 +372,74 @@ function AppContent({
   }, [user]);
 
   // Load and periodically refresh notifications and user profile updates
-  useEffect(() => {
-    const fetchNotificationsAndProfile = async () => {
-      const currentUser = userRef.current;
-      try {
-        const res = await api.get('/api/notifications');
-        if (res.data) {
-          const readIds = JSON.parse(localStorage.getItem('read_notification_ids') || '[]');
-          const deletedIds = JSON.parse(localStorage.getItem('deleted_notification_ids') || '[]');
+  const fetchNotificationsAndProfile = useCallback(async () => {
+    const currentUser = userRef.current;
+    try {
+      const res = await api.get('/api/notifications');
+      if (res.data) {
+        const readIds = JSON.parse(localStorage.getItem('read_notification_ids') || '[]');
+        const deletedIds = JSON.parse(localStorage.getItem('deleted_notification_ids') || '[]');
 
-          const backendNotifs = res.data
-            .filter(n => !deletedIds.includes(n.id))
-            .map(n => ({
-              ...n,
-              isRead: readIds.includes(n.id)
-            }));
+        const backendNotifs = res.data
+          .filter(n => !deletedIds.includes(n.id))
+          .map(n => ({
+            ...n,
+            isRead: readIds.includes(n.id)
+          }));
 
-          const userNotifs = (currentUser && currentUser.notifications)
-            ? currentUser.notifications
-                .filter(n => !deletedIds.includes(n.id))
-                .map(n => ({
-                  ...n,
-                  isRead: readIds.includes(n.id)
-                }))
-            : [];
+        const userNotifs = (currentUser && currentUser.notifications)
+          ? currentUser.notifications
+              .filter(n => !deletedIds.includes(n.id))
+              .map(n => ({
+                ...n,
+                isRead: readIds.includes(n.id)
+              }))
+          : [];
 
-          setNotifications(prev => {
-            const filteredPrev = prev.filter(n => !deletedIds.includes(n.id));
-            const combined = [...backendNotifs, ...userNotifs, ...filteredPrev];
-            const unique = [];
-            const seen = new Set();
-            for (const item of combined) {
-              if (!seen.has(item.id)) {
-                seen.add(item.id);
-                unique.push(item);
-              }
+        setNotifications(prev => {
+          const filteredPrev = prev.filter(n => !deletedIds.includes(n.id));
+          const combined = [...backendNotifs, ...userNotifs, ...filteredPrev];
+          const unique = [];
+          const seen = new Set();
+          for (const item of combined) {
+            if (!seen.has(item.id)) {
+              seen.add(item.id);
+              unique.push(item);
             }
-            return unique;
-          });
-        }
+          }
+          return unique;
+        });
+      }
+    } catch (err) {
+      console.error('Failed to load system notifications:', err);
+    }
+
+    // Periodically refresh profile/orders if token is valid and user is logged in
+    if (token && refreshUserProfile) {
+      try {
+        await refreshUserProfile();
       } catch (err) {
-        console.error('Failed to load system notifications:', err);
+        console.error('Failed to auto-refresh user profile:', err);
       }
-
-      // Periodically refresh profile/orders if token is valid and user is logged in
-      if (token && refreshUserProfile) {
-        try {
-          await refreshUserProfile();
-        } catch (err) {
-          console.error('Failed to auto-refresh user profile:', err);
-        }
-      }
-    };
-
-    fetchNotificationsAndProfile(); // Initial fetch
-
-    const interval = setInterval(fetchNotificationsAndProfile, 10000); // Poll every 10 seconds
-    return () => clearInterval(interval);
+    }
   }, [token, refreshUserProfile]);
+
+  // Fetch once on login, and poll at a maximum of once every 60 seconds
+  useEffect(() => {
+    if (!token) return;
+
+    fetchNotificationsAndProfile(); // Initial fetch on login
+
+    const interval = setInterval(fetchNotificationsAndProfile, 60000); // Poll every 60 seconds
+    return () => clearInterval(interval);
+  }, [token, fetchNotificationsAndProfile]);
+
+  // Fetch once when the Notifications page is opened
+  useEffect(() => {
+    if (location.pathname === '/notifications' && token) {
+      fetchNotificationsAndProfile();
+    }
+  }, [location.pathname, token, fetchNotificationsAndProfile]);
 
   // Synchronize read notifications status to localStorage
   useEffect(() => {
@@ -470,6 +486,62 @@ function AppContent({
     navigate(tabToPathMap[cleanTab] || `/${cleanTab}`);
   };
 
+  const renderHomepageSections = () => {
+    const layoutOrder = homepageData?.layout_order || [];
+    
+    const props = {
+      addToCart,
+      getItemQuantity,
+      updateQuantity,
+      toggleWishlist,
+      isInWishlist,
+      setActiveTab: handleSetActiveTab
+    };
+
+    if (layoutOrder.length === 0) {
+      return (
+        <>
+          <Hero />
+          <Categories setActiveTab={handleSetActiveTab} />
+          <PromoSection />
+          <BestSellers {...props} />
+          <BottomFeatures />
+        </>
+      );
+    }
+
+    return layoutOrder.map((section) => {
+      if (!section.is_visible) return null;
+
+      switch (section.section_id) {
+        case 'hero':
+          return <Hero key="hero" />;
+        case 'categories':
+          return <Categories key="categories" setActiveTab={handleSetActiveTab} />;
+        case 'promos':
+          return <PromoSection key="promos" />;
+        case 'bestsellers':
+          return <BestSellers key="bestsellers" {...props} />;
+        case 'featured_products':
+          return <FeaturedProducts key="featured_products" {...props} />;
+        case 'trending_products':
+          return <TrendingProducts key="trending_products" {...props} />;
+        case 'new_arrivals':
+          return <NewArrivals key="new_arrivals" {...props} />;
+        case 'seasonal_collections':
+          return <SeasonalCollections key="seasonal_collections" {...props} />;
+        case 'testimonials':
+          return <Testimonials key="testimonials" />;
+        case 'newsletter':
+          return <Newsletter key="newsletter" />;
+        case 'bottom_features':
+          return <BottomFeatures key="bottom_features" />;
+        default:
+          return null;
+      }
+    });
+  };
+
   const isAdminPage = location.pathname.startsWith('/admin');
 
   return (
@@ -488,21 +560,7 @@ function AppContent({
       <main className={isAdminPage ? "w-full min-h-screen" : "w-full flex flex-col gap-2"}>
         <Routes>
           {/* Main Home Page */}
-          <Route path="/" element={
-            <>
-              <Hero />
-              <Categories setActiveTab={handleSetActiveTab} />
-              <PromoSection />
-              <BestSellers 
-                addToCart={addToCart} 
-                getItemQuantity={getItemQuantity} 
-                updateQuantity={updateQuantity} 
-                toggleWishlist={toggleWishlist}
-                isInWishlist={isInWishlist}
-              />
-              <BottomFeatures />
-            </>
-          } />
+          <Route path="/" element={renderHomepageSections()} />
 
 
 

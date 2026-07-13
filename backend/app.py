@@ -3,12 +3,18 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 from backend.config import Config
-from backend.models import db, User, Product
+from backend.models import (
+    db, User, Product, Category, SubCategory, Offer,
+    HomepageSettings, HeroBanner, Announcement, HomepageFeature,
+    HomepageCategory, PromoCard, Testimonial, NewsletterSettings,
+    HomepageLayout, SeasonalCollection
+)
 from backend.routes.auth import auth_bp
 from backend.routes.user import user_bp
 from backend.routes.cart import cart_bp
 from backend.routes.admin import admin_bp
 from backend.routes.products import products_bp
+from backend.routes.cms import cms_bp
 from flask_bcrypt import Bcrypt
 
 def create_app():
@@ -52,6 +58,7 @@ def create_app():
     app.register_blueprint(cart_bp, url_prefix='/api/cart')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(products_bp, url_prefix='/api')
+    app.register_blueprint(cms_bp, url_prefix='/api')
     
     # Create DB tables and seed data
     with app.app_context():
@@ -154,7 +161,6 @@ def create_app():
             print("Seeded database with initial products list.")
         
         # 3. Seed initial categories list if empty
-        from backend.models import Category, SubCategory
         if Category.query.count() == 0:
             default_features = [
                 {"title": "Farm Fresh", "desc": "Picked Daily", "icon": "Leaf"},
@@ -284,7 +290,6 @@ def create_app():
             print("Seeded database with initial categories & subcategories.")
 
         # 4. Seed initial offers list if empty
-        from backend.models import Offer
         if Offer.query.count() == 0:
             SEED_OFFERS = [
                 {
@@ -305,6 +310,208 @@ def create_app():
                 db.session.add(off)
             db.session.commit()
             print("Seeded database with initial offers.")
+
+        # 5. Seed Homepage Layout & CMS content
+        # Seed HomepageSettings
+        if HomepageSettings.query.count() == 0:
+            settings = HomepageSettings(
+                best_sellers_max=8,
+                best_sellers_sort='default',
+                best_sellers_slider=True,
+                best_sellers_autoplay=False,
+                
+                featured_products_max=8,
+                featured_products_sort='default',
+                featured_products_slider=True,
+                featured_products_autoplay=False,
+                
+                trending_products_max=8,
+                trending_products_sort='default',
+                trending_products_slider=True,
+                trending_products_autoplay=False,
+                
+                new_arrivals_max=8,
+                new_arrivals_sort='default',
+                new_arrivals_slider=True,
+                new_arrivals_autoplay=False,
+                
+                announcements_scrolling=True,
+                announcements_speed=20
+            )
+            db.session.add(settings)
+            print("Seeded homepage settings.")
+
+        # Seed HeroBanner
+        if HeroBanner.query.count() == 0:
+            hero = HeroBanner(
+                badge="100% FARM FRESH",
+                heading="From Our Farms",
+                highlight_text="To Your Family",
+                description="Handpicked fruits, vegetables & spices delivered fresh to your doorstep.",
+                left_btn_text="Shop Now",
+                left_btn_link="#bestsellers",
+                right_btn_text="Explore Categories",
+                right_btn_link="#categories",
+                image="/hero_wicker_basket.png",
+                bg_gradient="from-[#C8E6C9]/40 via-[#E8F5E9]/15 to-transparent",
+                bg_image="",
+                discount_percentage="20%",
+                coupon_code="KAR20",
+                offer_title="FLAT",
+                offer_description="On First Order",
+                enable_floating_offer=True
+            )
+            db.session.add(hero)
+            print("Seeded hero banner details.")
+
+        # Seed Announcements
+        if Announcement.query.count() == 0:
+            announcements = [
+                Announcement(text="🚚 Free delivery on orders above ₹499", bg_color="#1B5E20", text_color="#FFFFFF", icon="Truck", is_active=True, sort_order=0),
+                Announcement(text="🌿 Farm Fresh. Chemical Free.", bg_color="#2E7D32", text_color="#FFFFFF", icon="Leaf", is_active=True, sort_order=1),
+                Announcement(text="⚡ Super fast delivery within 2 hours!", bg_color="#388E3C", text_color="#FFFFFF", icon="Clock", is_active=True, sort_order=2)
+            ]
+            for a in announcements:
+                db.session.add(a)
+            print("Seeded announcements.")
+
+        # Seed HomepageFeatures
+        if HomepageFeature.query.count() == 0:
+            features = [
+                HomepageFeature(icon="Truck", title="Free Delivery", subtitle="On orders above ₹499", link="", is_active=True, sort_order=0),
+                HomepageFeature(icon="Leaf", title="100% Fresh", subtitle="Farm picked daily", link="", is_active=True, sort_order=1),
+                HomepageFeature(icon="ShieldCheck", title="Secure Payment", subtitle="100% safe & secure", link="", is_active=True, sort_order=2),
+                HomepageFeature(icon="RotateCcw", title="Easy Returns", subtitle="Hassle free returns", link="", is_active=True, sort_order=3)
+            ]
+            for f in features:
+                db.session.add(f)
+            print("Seeded homepage features.")
+
+        # Seed HomepageCategories (linked to existing Categories)
+        if HomepageCategory.query.count() == 0:
+            db_categories = Category.query.all()
+            for idx, cat in enumerate(db_categories):
+                bgs = ["#E8F5E9", "#FFF3E0", "#E1F5FE", "#EDE7F6", "#FCE4EC"]
+                bg_color = bgs[idx % len(bgs)]
+                h_cat = HomepageCategory(
+                    category_id=cat.id,
+                    name=cat.name,
+                    slug=cat.slug,
+                    image=cat.image,
+                    sort_order=idx,
+                    is_featured=True,
+                    is_active=True,
+                    bg_color=bg_color,
+                    link=f"/category/{cat.slug}"
+                )
+                db.session.add(h_cat)
+            print("Seeded homepage categories.")
+
+        # Seed PromoCards
+        if PromoCard.query.count() == 0:
+            promos = [
+                PromoCard(
+                    title="Mango Season",
+                    description="Sweet. Juicy. Fresh.",
+                    discount="25% OFF",
+                    image="/product_mango.png",
+                    btn_text="Shop Now",
+                    btn_link="/category/fruits",
+                    bg_color="#F9FAF0",
+                    is_active=True
+                ),
+                PromoCard(
+                    title="Spice Essentials",
+                    description="Pure spices for flavorful meals.",
+                    discount="15% OFF",
+                    image="/category_spices.png",
+                    btn_text="Shop Now",
+                    btn_link="/category/spices",
+                    bg_color="#FAFAF2",
+                    is_active=True
+                ),
+                PromoCard(
+                    title="Get Karshaq App",
+                    description="Faster delivery, exclusive offers & more!",
+                    discount="",
+                    image="/app_mockup_phone.png",
+                    btn_text="Download App",
+                    btn_link="#download",
+                    bg_color="#E8F5E9/50",
+                    is_active=True
+                )
+            ]
+            for p in promos:
+                db.session.add(p)
+            print("Seeded homepage promo cards.")
+
+        # Seed Testimonials
+        if Testimonial.query.count() == 0:
+            testimonials = [
+                Testimonial(customer_name="Siddharth M.", photo="https://api.dicebear.com/7.x/adventurer/svg?seed=Siddharth", rating=5, review="Extremely fresh apples! Best packaging ever.", sort_order=0, is_active=True),
+                Testimonial(customer_name="Meera Patel", photo="https://api.dicebear.com/7.x/adventurer/svg?seed=Meera", rating=4, review="Tomatoes are fresh but delivery took slightly longer than normal.", sort_order=1, is_active=True),
+                Testimonial(customer_name="Vijay K.", photo="https://api.dicebear.com/7.x/adventurer/svg?seed=Vijay", rating=5, review="Spices have incredibly strong aroma. Will buy Elaichi again!", sort_order=2, is_active=True)
+            ]
+            for t in testimonials:
+                db.session.add(t)
+            print("Seeded testimonials.")
+
+        # Seed NewsletterSettings
+        if NewsletterSettings.query.count() == 0:
+            newsletter = NewsletterSettings(
+                heading="Subscribe to Our Newsletter",
+                description="Get updates on fresh arrivals, special discounts & healthy recipes.",
+                btn_text="Subscribe Now",
+                offer="Get 10% off your next order upon subscription!",
+                bg_image="",
+                bg_color="#E8F5E9"
+            )
+            db.session.add(newsletter)
+            print("Seeded newsletter settings.")
+
+        # Seed HomepageLayout Order
+        if HomepageLayout.query.count() == 0:
+            sections = [
+                'hero',
+                'announcement',
+                'features',
+                'categories',
+                'promos',
+                'bestsellers',
+                'featured_products',
+                'trending_products',
+                'new_arrivals',
+                'seasonal_collections',
+                'testimonials',
+                'newsletter',
+                'bottom_features'
+            ]
+            for idx, sec in enumerate(sections):
+                layout = HomepageLayout(
+                    section_id=sec,
+                    sort_order=idx,
+                    is_visible=True
+                )
+                db.session.add(layout)
+            print("Seeded homepage layout order.")
+
+        # Sync/Mark existing products with CMS flags
+        prods = Product.query.all()
+        if prods:
+            for idx, p in enumerate(prods):
+                if idx % 4 == 0:
+                    p.featured = True
+                if idx % 4 == 1:
+                    p.best_seller = True
+                if idx % 4 == 2:
+                    p.trending = True
+                if idx % 4 == 3:
+                    p.new_arrival = True
+            db.session.commit()
+            print("Synchronized existing products with Featured, Best Seller, Trending, and New Arrival tags.")
+            
+        db.session.commit()
+        print("Completed database seeding of homepage CMS features.")
         
     @app.route('/health', methods=['GET'])
     def health():

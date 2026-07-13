@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
 
@@ -38,6 +38,22 @@ export function AuthProvider({
   const [categories, setCategories] = useState([]);
   const [offers, setOffers] = useState([]);
   const [productsLoading, setProductsLoading] = useState(false);
+  const [homepageData, setHomepageData] = useState(null);
+  const [homepageLoading, setHomepageLoading] = useState(false);
+
+  const fetchHomepageData = async () => {
+    try {
+      setHomepageLoading(true);
+      const res = await api.get('/api/homepage');
+      if (res.data) {
+        setHomepageData(res.data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch homepage dynamic CMS data:', err);
+    } finally {
+      setHomepageLoading(false);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -79,6 +95,7 @@ export function AuthProvider({
     fetchProducts();
     fetchCategories();
     fetchOffers();
+    fetchHomepageData();
   }, []);
 
   // Setup request interceptor to attach JWT token
@@ -435,7 +452,7 @@ export function AuthProvider({
     }
   };
 
-  const refreshUserProfile = async () => {
+  const refreshUserProfile = useCallback(async () => {
     const storedToken = localStorage.getItem('karshaq_token') || sessionStorage.getItem('karshaq_token');
     if (storedToken) {
       try {
@@ -450,7 +467,7 @@ export function AuthProvider({
         console.error('Failed to refresh user profile:', err);
       }
     }
-  };
+  }, []);
 
   return (
     <AuthContext.Provider value={{
@@ -485,7 +502,10 @@ export function AuthProvider({
       fetchCategories,
       offers,
       fetchOffers,
-      productsLoading
+      productsLoading,
+      homepageData,
+      fetchHomepageData,
+      homepageLoading
     }}>
       {children}
     </AuthContext.Provider>

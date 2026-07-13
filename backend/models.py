@@ -98,6 +98,8 @@ class Product(db.Model):
     featured = db.Column(db.Boolean, default=False)
     organic = db.Column(db.Boolean, default=False)
     best_seller = db.Column(db.Boolean, default=False)
+    trending = db.Column(db.Boolean, default=False)
+    new_arrival = db.Column(db.Boolean, default=False)
     availability = db.Column(db.Boolean, default=True)
 
     def to_json(self):
@@ -122,6 +124,8 @@ class Product(db.Model):
             'featured': self.featured,
             'organic': self.organic,
             'best_seller': self.best_seller,
+            'trending': self.trending,
+            'new_arrival': self.new_arrival,
             'availability': self.availability
         }
 
@@ -244,4 +248,278 @@ class BroadcastNotification(db.Model):
             'link': self.link,
             'linkLabel': self.link_label,
             'isRead': False
+        }
+
+class HomepageSettings(db.Model):
+    __tablename__ = 'homepage_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    best_sellers_max = db.Column(db.Integer, default=8)
+    best_sellers_sort = db.Column(db.String(50), default='default')
+    best_sellers_slider = db.Column(db.Boolean, default=True)
+    best_sellers_autoplay = db.Column(db.Boolean, default=False)
+    
+    featured_products_max = db.Column(db.Integer, default=8)
+    featured_products_sort = db.Column(db.String(50), default='default')
+    featured_products_slider = db.Column(db.Boolean, default=True)
+    featured_products_autoplay = db.Column(db.Boolean, default=False)
+    
+    trending_products_max = db.Column(db.Integer, default=8)
+    trending_products_sort = db.Column(db.String(50), default='default')
+    trending_products_slider = db.Column(db.Boolean, default=True)
+    trending_products_autoplay = db.Column(db.Boolean, default=False)
+    
+    new_arrivals_max = db.Column(db.Integer, default=8)
+    new_arrivals_sort = db.Column(db.String(50), default='default')
+    new_arrivals_slider = db.Column(db.Boolean, default=True)
+    new_arrivals_autoplay = db.Column(db.Boolean, default=False)
+    
+    announcements_scrolling = db.Column(db.Boolean, default=True)
+    announcements_speed = db.Column(db.Integer, default=20)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'best_sellers_max': self.best_sellers_max,
+            'best_sellers_sort': self.best_sellers_sort,
+            'best_sellers_slider': self.best_sellers_slider,
+            'best_sellers_autoplay': self.best_sellers_autoplay,
+            
+            'featured_products_max': self.featured_products_max,
+            'featured_products_sort': self.featured_products_sort,
+            'featured_products_slider': self.featured_products_slider,
+            'featured_products_autoplay': self.featured_products_autoplay,
+            
+            'trending_products_max': self.trending_products_max,
+            'trending_products_sort': self.trending_products_sort,
+            'trending_products_slider': self.trending_products_slider,
+            'trending_products_autoplay': self.trending_products_autoplay,
+            
+            'new_arrivals_max': self.new_arrivals_max,
+            'new_arrivals_sort': self.new_arrivals_sort,
+            'new_arrivals_slider': self.new_arrivals_slider,
+            'new_arrivals_autoplay': self.new_arrivals_autoplay,
+            
+            'announcements_scrolling': self.announcements_scrolling,
+            'announcements_speed': self.announcements_speed
+        }
+
+class HeroBanner(db.Model):
+    __tablename__ = 'hero_banners'
+    id = db.Column(db.Integer, primary_key=True)
+    badge = db.Column(db.String(100), nullable=True)
+    heading = db.Column(db.String(200), nullable=False)
+    highlight_text = db.Column(db.String(200), nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    left_btn_text = db.Column(db.String(100), nullable=True)
+    left_btn_link = db.Column(db.String(255), nullable=True)
+    right_btn_text = db.Column(db.String(100), nullable=True)
+    right_btn_link = db.Column(db.String(255), nullable=True)
+    image = db.Column(db.Text, nullable=True)
+    bg_gradient = db.Column(db.Text, nullable=True)
+    bg_image = db.Column(db.Text, nullable=True)
+    discount_percentage = db.Column(db.String(50), nullable=True)
+    coupon_code = db.Column(db.String(100), nullable=True)
+    offer_title = db.Column(db.String(100), nullable=True)
+    offer_description = db.Column(db.Text, nullable=True)
+    enable_floating_offer = db.Column(db.Boolean, default=True)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'badge': self.badge,
+            'heading': self.heading,
+            'highlight_text': self.highlight_text,
+            'description': self.description,
+            'left_btn_text': self.left_btn_text,
+            'left_btn_link': self.left_btn_link,
+            'right_btn_text': self.right_btn_text,
+            'right_btn_link': self.right_btn_link,
+            'image': self.image,
+            'bg_gradient': self.bg_gradient,
+            'bg_image': self.bg_image,
+            'discount_percentage': self.discount_percentage,
+            'coupon_code': self.coupon_code,
+            'offer_title': self.offer_title,
+            'offer_description': self.offer_description,
+            'enable_floating_offer': self.enable_floating_offer
+        }
+
+class Announcement(db.Model):
+    __tablename__ = 'announcements'
+    id = db.Column(db.Integer, primary_key=True)
+    text = db.Column(db.String(255), nullable=False)
+    bg_color = db.Column(db.String(50), default='#1B5E20')
+    text_color = db.Column(db.String(50), default='#FFFFFF')
+    icon = db.Column(db.String(100), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    sort_order = db.Column(db.Integer, default=0)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'text': self.text,
+            'bg_color': self.bg_color,
+            'text_color': self.text_color,
+            'icon': self.icon,
+            'is_active': self.is_active,
+            'sort_order': self.sort_order
+        }
+
+class HomepageFeature(db.Model):
+    __tablename__ = 'homepage_features'
+    id = db.Column(db.Integer, primary_key=True)
+    icon = db.Column(db.String(100), nullable=True)
+    title = db.Column(db.String(100), nullable=False)
+    subtitle = db.Column(db.String(255), nullable=True)
+    link = db.Column(db.String(255), nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+    sort_order = db.Column(db.Integer, default=0)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'icon': self.icon,
+            'title': self.title,
+            'subtitle': self.subtitle,
+            'link': self.link,
+            'is_active': self.is_active,
+            'sort_order': self.sort_order
+        }
+
+class HomepageCategory(db.Model):
+    __tablename__ = 'homepage_categories'
+    id = db.Column(db.Integer, primary_key=True)
+    category_id = db.Column(db.Integer, db.ForeignKey('categories.id', ondelete='CASCADE'), nullable=True)
+    name = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), nullable=False)
+    image = db.Column(db.Text, nullable=True)
+    sort_order = db.Column(db.Integer, default=0)
+    is_featured = db.Column(db.Boolean, default=True)
+    is_active = db.Column(db.Boolean, default=True)
+    bg_color = db.Column(db.String(50), default='#FFFFFF')
+    link = db.Column(db.String(255), nullable=True)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'category_id': self.category_id,
+            'name': self.name,
+            'slug': self.slug,
+            'image': self.image,
+            'sort_order': self.sort_order,
+            'is_featured': self.is_featured,
+            'is_active': self.is_active,
+            'bg_color': self.bg_color,
+            'link': self.link
+        }
+
+class PromoCard(db.Model):
+    __tablename__ = 'promo_cards'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    discount = db.Column(db.String(50), nullable=True)
+    image = db.Column(db.Text, nullable=True)
+    btn_text = db.Column(db.String(100), default='Shop Now')
+    btn_link = db.Column(db.String(255), default='/')
+    bg_color = db.Column(db.String(50), default='#F9FAF0')
+    start_date = db.Column(db.DateTime, nullable=True)
+    end_date = db.Column(db.DateTime, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'description': self.description,
+            'discount': self.discount,
+            'image': self.image,
+            'btn_text': self.btn_text,
+            'btn_link': self.btn_link,
+            'bg_color': self.bg_color,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'is_active': self.is_active
+        }
+
+class Testimonial(db.Model):
+    __tablename__ = 'testimonials'
+    id = db.Column(db.Integer, primary_key=True)
+    customer_name = db.Column(db.String(100), nullable=False)
+    photo = db.Column(db.Text, nullable=True)
+    rating = db.Column(db.Integer, default=5)
+    review = db.Column(db.Text, nullable=False)
+    sort_order = db.Column(db.Integer, default=0)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'customer_name': self.customer_name,
+            'photo': self.photo,
+            'rating': self.rating,
+            'review': self.review,
+            'sort_order': self.sort_order,
+            'is_active': self.is_active
+        }
+
+class NewsletterSettings(db.Model):
+    __tablename__ = 'newsletter_settings'
+    id = db.Column(db.Integer, primary_key=True)
+    heading = db.Column(db.String(200), nullable=False)
+    description = db.Column(db.Text, nullable=True)
+    btn_text = db.Column(db.String(100), default='Subscribe')
+    offer = db.Column(db.String(200), nullable=True)
+    bg_image = db.Column(db.Text, nullable=True)
+    bg_color = db.Column(db.String(50), default='#E8F5E9')
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'heading': self.heading,
+            'description': self.description,
+            'btn_text': self.btn_text,
+            'offer': self.offer,
+            'bg_image': self.bg_image,
+            'bg_color': self.bg_color
+        }
+
+class HomepageLayout(db.Model):
+    __tablename__ = 'homepage_layouts'
+    id = db.Column(db.Integer, primary_key=True)
+    section_id = db.Column(db.String(100), unique=True, nullable=False)
+    sort_order = db.Column(db.Integer, default=0)
+    is_visible = db.Column(db.Boolean, default=True)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'section_id': self.section_id,
+            'sort_order': self.sort_order,
+            'is_visible': self.is_visible
+        }
+
+class SeasonalCollection(db.Model):
+    __tablename__ = 'seasonal_collections'
+    id = db.Column(db.Integer, primary_key=True)
+    title = db.Column(db.String(100), nullable=False)
+    slug = db.Column(db.String(100), unique=True, nullable=False)
+    banner = db.Column(db.Text, nullable=True)
+    description = db.Column(db.Text, nullable=True)
+    product_ids = db.Column(db.JSON, default=list, nullable=True)
+    start_date = db.Column(db.DateTime, nullable=True)
+    end_date = db.Column(db.DateTime, nullable=True)
+    is_active = db.Column(db.Boolean, default=True)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'title': self.title,
+            'slug': self.slug,
+            'banner': self.banner,
+            'description': self.description,
+            'product_ids': self.product_ids or [],
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'is_active': self.is_active
         }

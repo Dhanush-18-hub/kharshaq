@@ -39,6 +39,7 @@ import OrderManagementView from './OrderManagementView';
 import CustomerManagementView from './CustomerManagementView';
 import OffersManagementView from './OffersManagementView';
 import ReportsView from './ReportsView';
+import HomePageManagementView from './HomePageManagementView';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -107,6 +108,7 @@ export default function AdminDashboard() {
     { name: 'Dashboard', icon: LayoutDashboard },
     { name: 'Products', icon: ShoppingBag },
     { name: 'Categories', icon: Layers },
+    { name: 'Home Page Management', icon: Settings },
     { name: 'Orders', icon: ClipboardList, badge: stats?.pendingOrders || 0 },
     { name: 'Customers', icon: Users },
     { name: 'Offers & Coupons', icon: Ticket },
@@ -138,6 +140,8 @@ export default function AdminDashboard() {
         return <ProductManagementView />;
       case 'Categories':
         return <ProductManagementView initialTab="categories" />;
+      case 'Home Page Management':
+        return <HomePageManagementView />;
       case 'Orders':
         return <OrderManagementView />;
       case 'Customers':

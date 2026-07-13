@@ -32,6 +32,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
   const [featured, setFeatured] = useState(product?.featured || false);
   const [organic, setOrganic] = useState(product?.organic || false);
   const [bestSeller, setBestSeller] = useState(product?.best_seller || false);
+  const [trending, setTrending] = useState(product?.trending || false);
+  const [newArrival, setNewArrival] = useState(product?.new_arrival || false);
   const [availability, setAvailability] = useState(product?.availability ?? true);
 
   const selectedCatObj = categoriesList.find(c => c.slug === category || c.name.toLowerCase().replace(/\s+/g, '') === category);
@@ -57,6 +59,8 @@ export default function AddProductModal({ product, onClose, refresh }) {
       featured,
       organic,
       bestSeller,
+      trending,
+      newArrival,
       availability
     };
 
@@ -263,7 +267,7 @@ export default function AddProductModal({ product, onClose, refresh }) {
           {/* Badges / Checkboxes Grid */}
           <div className="border-t border-gray-50 pt-5 space-y-4">
             <h4 className="font-bold text-xs text-gray-400 uppercase tracking-wider mb-2.5">Catalog Placement & Badges</h4>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <label className="flex items-center gap-3 p-3 border border-gray-100/60 rounded-xl bg-gray-50/20 hover:bg-gray-50/50 transition cursor-pointer select-none">
                 <input
                   type="checkbox"
@@ -300,6 +304,32 @@ export default function AddProductModal({ product, onClose, refresh }) {
                 <div>
                   <span className="block text-xs font-bold text-gray-800">Featured</span>
                   <span className="text-[10px] text-gray-400 font-sans block mt-0.5">Display on home promo spotlight</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 border border-gray-100/60 rounded-xl bg-gray-50/20 hover:bg-gray-50/50 transition cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4.5 h-4.5"
+                  checked={trending}
+                  onChange={(e) => setTrending(e.target.checked)}
+                />
+                <div>
+                  <span className="block text-xs font-bold text-gray-800">Trending</span>
+                  <span className="text-[10px] text-gray-400 font-sans block mt-0.5">Spotlight in Trending sections</span>
+                </div>
+              </label>
+
+              <label className="flex items-center gap-3 p-3 border border-gray-100/60 rounded-xl bg-gray-50/20 hover:bg-gray-50/50 transition cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500 w-4.5 h-4.5"
+                  checked={newArrival}
+                  onChange={(e) => setNewArrival(e.target.checked)}
+                />
+                <div>
+                  <span className="block text-xs font-bold text-gray-800">New Arrival</span>
+                  <span className="text-[10px] text-gray-400 font-sans block mt-0.5">Spotlight in New Arrivals sections</span>
                 </div>
               </label>
 
