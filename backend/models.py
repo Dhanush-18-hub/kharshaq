@@ -523,3 +523,25 @@ class SeasonalCollection(db.Model):
             'end_date': self.end_date.isoformat() if self.end_date else None,
             'is_active': self.is_active
         }
+
+class FinancialExpense(db.Model):
+    __tablename__ = 'financial_expenses'
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(100), nullable=False) # 'Delivery', 'Packaging', 'Marketing', 'Warehouse', 'Salary', 'Other'
+    amount = db.Column(db.Float, nullable=False)
+    date = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    description = db.Column(db.Text, nullable=True)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'category': self.category,
+            'amount': self.amount,
+            'date': self.date.isoformat() if self.date else None,
+            'description': self.description
+        }
+
+class GSTConfig(db.Model):
+    __tablename__ = 'gst_config'
+    id = db.Column(db.Integer, primary_key=True)
+    gst_percent = db.Column(db.Float, default=18.0, nullable=False)

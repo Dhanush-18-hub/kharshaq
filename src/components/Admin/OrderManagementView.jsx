@@ -102,6 +102,13 @@ export default function OrderManagementView() {
         return 'bg-indigo-50 text-indigo-700 border-indigo-100/50';
       case 'Cancelled':
         return 'bg-rose-50 text-rose-700 border-rose-100/50';
+      case 'Refund Requested':
+        return 'bg-amber-50 text-amber-600 border-amber-100/50';
+      case 'Refunded':
+      case 'Refund Approved':
+        return 'bg-rose-100 text-rose-800 border-rose-200';
+      case 'Refund Rejected':
+        return 'bg-gray-100 text-gray-600 border-gray-200';
       default:
         return 'bg-gray-50 text-gray-700 border-gray-100';
     }
@@ -195,6 +202,9 @@ export default function OrderManagementView() {
                         <option value="Shipped">Shipped</option>
                         <option value="Delivered">Delivered</option>
                         <option value="Cancelled">Cancelled</option>
+                        <option value="Refund Requested">Refund Requested</option>
+                        <option value="Refunded">Refunded (Approved)</option>
+                        <option value="Refund Rejected">Refund Rejected</option>
                       </select>
                     )}
                   </td>

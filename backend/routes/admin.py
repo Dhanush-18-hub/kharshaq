@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
-from backend.models import db, User, Product, Category, Offer, SubCategory, BroadcastNotification
+from backend.models import db, User, Product, Category, Offer, SubCategory, BroadcastNotification, FinancialExpense, GSTConfig
 from datetime import datetime, timedelta
 import random
 
@@ -32,40 +32,147 @@ def get_stats():
     # 2. Fetch all products
     product_count = Product.query.count()
     
-    # 3. Aggregate orders and revenue from user JSON
-    total_revenue = 0
-    total_orders = 0
+    # Get parameters
+    filter_type = request.args.get('filter', 'this-week').lower()
+    start_date_str = request.args.get('startDate')
+    end_date_str = request.args.get('endDate')
+    
+    now = datetime.now()
+    
+    # Helper functions to parse dates
+    def parse_order_date(date_str):
+        if not date_str:
+            return None
+        try:
+            clean_str = date_str.split('•')[0].strip()
+            return datetime.strptime(clean_str, "%d %b %Y")
+        except Exception:
+            try:
+                if 'T' in date_str:
+                    date_str = date_str.split('T')[0]
+                return datetime.strptime(date_str.strip(), "%Y-%m-%d")
+            except Exception:
+                return None
+
+    def get_order_hour(date_str):
+        if not date_str or ' • ' not in date_str:
+            return 0
+        try:
+            parts = date_str.split(' • ')
+            time_part = parts[1].strip()
+            dt = datetime.strptime(time_part, "%I:%M %p")
+            return dt.hour
+        except Exception:
+            return 0
+
+    def parse_iso_date(d_str):
+        if not d_str: return None
+        try:
+            if 'T' in d_str:
+                d_str = d_str.split('T')[0]
+            return datetime.strptime(d_str, "%Y-%m-%d")
+        except Exception:
+            return None
+
+    # Determine start_dt, end_dt, labels and pre-initialize charts
+    if filter_type == 'today':
+        start_dt = datetime(now.year, now.month, now.day, 0, 0, 0)
+        end_dt = datetime(now.year, now.month, now.day, 23, 59, 59)
+        labels = ["12 AM", "1 AM", "2 AM", "3 AM", "4 AM", "5 AM", "6 AM", "7 AM", "8 AM", "9 AM", "10 AM", "11 AM", "12 PM", "1 PM", "2 PM", "3 PM", "4 PM", "5 PM", "6 PM", "7 PM", "8 PM", "9 PM", "10 PM", "11 PM"]
+        sales = [0.0] * 24
+        orders_count = [0] * 24
+    elif filter_type in ['this-week', 'week']:
+        monday = now - timedelta(days=now.weekday())
+        start_dt = datetime(monday.year, monday.month, monday.day, 0, 0, 0)
+        end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
+        labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        sales = [0.0] * 7
+        orders_count = [0] * 7
+    elif filter_type in ['this-month', 'month']:
+        start_dt = datetime(now.year, now.month, 1, 0, 0, 0)
+        next_month = datetime(now.year + 1, 1, 1) if now.month == 12 else datetime(now.year, now.month + 1, 1)
+        end_dt = next_month - timedelta(seconds=1)
+        days_count = (end_dt - start_dt).days + 1
+        labels = [str(i) for i in range(1, days_count + 1)]
+        sales = [0.0] * days_count
+        orders_count = [0] * days_count
+    elif filter_type in ['this-year', 'year']:
+        start_dt = datetime(now.year, 1, 1, 0, 0, 0)
+        end_dt = datetime(now.year, 12, 31, 23, 59, 59)
+        labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        sales = [0.0] * 12
+        orders_count = [0] * 12
+    else: # custom
+        s_dt = parse_iso_date(start_date_str)
+        e_dt = parse_iso_date(end_date_str)
+        if s_dt and e_dt:
+            start_dt = datetime(s_dt.year, s_dt.month, s_dt.day, 0, 0, 0)
+            end_dt = datetime(e_dt.year, e_dt.month, e_dt.day, 23, 59, 59)
+            filter_type = 'custom'
+        else:
+            monday = now - timedelta(days=now.weekday())
+            start_dt = datetime(monday.year, monday.month, monday.day, 0, 0, 0)
+            end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
+            filter_type = 'this-week'
+            labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+            sales = [0.0] * 7
+            orders_count = [0] * 7
+            
+        if filter_type == 'custom':
+            labels = []
+            curr = start_dt
+            while curr <= end_dt:
+                labels.append(curr.strftime("%d %b"))
+                curr += timedelta(days=1)
+            sales = [0.0] * len(labels)
+            orders_count = [0] * len(labels)
+
+    # Variables for stats in range
+    filtered_revenue = 0.0
+    filtered_orders_count = 0
     pending_orders_count = 0
     recent_orders = []
     
     # Track sales by category and product sold count
     category_sales = {
-        'fruits': 0,
-        'vegetables': 0,
-        'spices': 0,
-        'dryfruits': 0,
-        'others': 0
+        'fruits': 0.0,
+        'vegetables': 0.0,
+        'spices': 0.0,
+        'dryfruits': 0.0,
+        'others': 0.0
     }
     top_selling_dict = {}
-    
+
     for u in customers:
         orders = u.orders or []
-        total_orders += len(orders)
         for o in orders:
-            price_val = float(o.get('total', 0))
-            total_revenue += price_val
             status = o.get('status', 'Pending')
+            
+            # Count pending orders across all time
             if status in ['Pending', 'Processing', 'Packed', 'Shipped']:
                 pending_orders_count += 1
+                
+            # Parse date
+            o_date_str = o.get('date', '')
+            o_dt = parse_order_date(o_date_str)
+            if not o_dt:
+                continue
+                
+            # Filter check
+            is_in_range = (start_dt <= o_dt <= end_dt)
+            if not is_in_range:
+                continue
+
+            price_val = float(o.get('total', 0))
             
-            # Format order for dashboard
+            # Formatting for recent list (all status, but only in filter range)
             order_data = {
                 'id': o.get('id', f"KSQ{random.randint(10000, 99999)}"),
                 'customerId': u.id,
                 'customerName': u.name,
                 'customerEmail': u.email,
                 'customerPhone': u.phone,
-                'date': o.get('date', datetime.utcnow().strftime('%d %b %Y')),
+                'date': o_date_str,
                 'total': price_val,
                 'status': status,
                 'items': o.get('items', []),
@@ -73,61 +180,86 @@ def get_stats():
                 'paymentMethod': o.get('paymentMethod', 'Cash on Delivery')
             }
             recent_orders.append(order_data)
-            
-            # Extract category and top-selling data
-            for item in o.get('items', []):
-                cat = item.get('category', 'others').lower()
-                # Map category from frontend naming
-                if 'dry' in cat:
-                    cat = 'dryfruits'
-                elif 'fruit' in cat:
-                    cat = 'fruits'
-                elif 'veggie' in cat or 'vegetable' in cat:
-                    cat = 'vegetables'
-                elif 'spice' in cat:
-                    cat = 'spices'
-                else:
-                    cat = 'others'
+
+            # Accumulate stats ONLY if completed/delivered
+            if status in ['Completed', 'Delivered']:
+                filtered_revenue += price_val
+                filtered_orders_count += 1
+                
+                # Plot onto graph array
+                if filter_type == 'today':
+                    hr = get_order_hour(o_date_str)
+                    if 0 <= hr < 24:
+                        sales[hr] += price_val
+                        orders_count[hr] += 1
+                elif filter_type in ['this-week', 'week']:
+                    weekday = o_dt.weekday() # 0 is Monday, 6 is Sunday
+                    if 0 <= weekday < 7:
+                        sales[weekday] += price_val
+                        orders_count[weekday] += 1
+                elif filter_type in ['this-month', 'month']:
+                    day_idx = o_dt.day - 1
+                    if 0 <= day_idx < len(sales):
+                        sales[day_idx] += price_val
+                        orders_count[day_idx] += 1
+                elif filter_type in ['this-year', 'year']:
+                    month_idx = o_dt.month - 1
+                    if 0 <= month_idx < 12:
+                        sales[month_idx] += price_val
+                        orders_count[month_idx] += 1
+                else: # custom
+                    day_offset = (o_dt - start_dt).days
+                    if 0 <= day_offset < len(sales):
+                        sales[day_offset] += price_val
+                        orders_count[day_offset] += 1
+
+                # Extract category and top-selling data
+                for item in o.get('items', []):
+                    cat = item.get('category', 'others').lower()
+                    if 'dry' in cat:
+                        cat = 'dryfruits'
+                    elif 'fruit' in cat:
+                        cat = 'fruits'
+                    elif 'veggie' in cat or 'vegetable' in cat:
+                        cat = 'vegetables'
+                    elif 'spice' in cat:
+                        cat = 'spices'
+                    else:
+                        cat = 'others'
+                        
+                    qty = int(item.get('quantity', 1))
+                    item_price = float(item.get('price', 0))
+                    subtotal = item_price * qty
                     
-                qty = int(item.get('quantity', 1))
-                item_price = float(item.get('price', 0))
-                subtotal = item_price * qty
-                
-                category_sales[cat] = category_sales.get(cat, 0) + subtotal
-                
-                # Product specific
-                prod_id = item.get('id')
-                prod_name = item.get('name')
-                if prod_id:
-                    if prod_id not in top_selling_dict:
-                        top_selling_dict[prod_id] = {
-                            'id': prod_id,
-                            'name': prod_name,
-                            'category': cat.capitalize(),
-                            'sold': 0,
-                            'revenue': 0,
-                            'image': item.get('image')
-                        }
-                    top_selling_dict[prod_id]['sold'] += qty
-                    top_selling_dict[prod_id]['revenue'] += subtotal
+                    category_sales[cat] = category_sales.get(cat, 0) + subtotal
+                    
+                    prod_id = item.get('id')
+                    prod_name = item.get('name')
+                    if prod_id:
+                        if prod_id not in top_selling_dict:
+                            top_selling_dict[prod_id] = {
+                                'id': prod_id,
+                                'name': prod_name,
+                                'category': cat.capitalize(),
+                                'sold': 0,
+                                'revenue': 0.0,
+                                'image': item.get('image')
+                            }
+                        top_selling_dict[prod_id]['sold'] += qty
+                        top_selling_dict[prod_id]['revenue'] += subtotal
 
     # Order recent orders by date or id descending
     recent_orders = sorted(recent_orders, key=lambda x: x.get('date', ''), reverse=True)[:8]
-    
-    # Format Top Selling Products
     top_selling_list = sorted(list(top_selling_dict.values()), key=lambda x: x['sold'], reverse=True)[:5]
-    
-    # Calculate Profit Card (e.g. 18% profit margins on average)
-    profit = total_revenue * 0.18
-    
-    # Weekly sales graph data (Sales Overview)
-    # Return mock/actual sales per day of the current week
+    profit = filtered_revenue * 0.18
+
+    # Weekly/custom sales graph data (Sales Overview)
     sales_overview = {
-        'labels': ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-        'thisWeek': [28000, 31000, 34000, 30000, 48000, 36000, 42000],
-        'lastWeek': [21000, 23000, 25000, 22000, 32000, 24000, 29000]
+        'labels': labels,
+        'sales': sales,
+        'orders': orders_count
     }
-    
+
     # Generate category chart structure
     total_cat_sales = sum(category_sales.values()) or 1
     category_pie = [
@@ -136,33 +268,26 @@ def get_stats():
         {'name': 'Spices', 'value': round((category_sales['spices'] / total_cat_sales) * 100), 'amount': category_sales['spices']},
         {'name': 'Dry Fruits', 'value': round((category_sales['dryfruits'] / total_cat_sales) * 100), 'amount': category_sales['dryfruits']}
     ]
-    
-    # Clean up 0 values if empty
-    if total_cat_sales == 1:
-        category_pie = [
-            {'name': 'Fruits & Vegetables', 'value': 42, 'amount': 103185},
-            {'name': 'Groceries & Staples', 'value': 25, 'amount': 61420},
-            {'name': 'Dairy & Bakery', 'value': 15, 'amount': 36852},
-            {'name': 'Snacks & Beverages', 'value': 10, 'amount': 24568},
-            {'name': 'Others', 'value': 8, 'amount': 19654}
-        ]
-        total_revenue = 245680
-        total_orders = 1248
-        pending_orders_count = 25
-        customer_count = 3265
-        product_count = 512
-        profit = 44222
-        
-    activity_log = [
-        {'id': 1, 'text': 'New product "Organic Honey" added by Admin', 'time': '10 mins ago'},
-        {'id': 2, 'text': 'Order #KSQ12578 delivered to Ravi Kumar', 'time': '20 mins ago'},
-        {'id': 3, 'text': 'New customer Ananya Singh registered', 'time': '1 hour ago'},
-        {'id': 4, 'text': 'Offer "Flat 15% OFF" created by Admin', 'time': '2 hours ago'}
-    ]
+
+    # Clean activity log dynamically
+    activity_log = []
+    for o in recent_orders[:3]:
+        activity_log.append({
+            'id': f"act_ord_{o['id']}",
+            'text': f"Order #{o['id']} status updated to '{o['status']}'",
+            'time': o['date'].split(' • ')[1] if ' • ' in o['date'] else 'Recent'
+        })
+    recent_customers = sorted(customers, key=lambda x: x.created_at, reverse=True)[:2]
+    for rc in recent_customers:
+        activity_log.append({
+            'id': f"act_cust_{rc.id}",
+            'text': f"New customer {rc.name} registered",
+            'time': rc.created_at.strftime('%d %b') if rc.created_at else 'Recent'
+        })
 
     return jsonify({
-        'revenue': total_revenue,
-        'ordersCount': total_orders,
+        'revenue': filtered_revenue,
+        'ordersCount': filtered_orders_count,
         'customersCount': customer_count,
         'productsCount': product_count,
         'pendingOrders': pending_orders_count,
@@ -173,6 +298,595 @@ def get_stats():
         'categorySales': category_pie,
         'activityLog': activity_log
     }), 200
+
+# --- FINANCIAL ANALYTICS ENDPOINTS ---
+@admin_bp.route('/financial-analytics', methods=['GET'])
+def get_financial_analytics():
+    filter_type = request.args.get('filter', 'this-month').lower()
+    start_date_str = request.args.get('startDate')
+    end_date_str = request.args.get('endDate')
+    status_param = request.args.get('status', 'Completed,Delivered')
+    target_statuses = [s.strip() for s in status_param.split(',') if s.strip()]
+
+    now = datetime.now()
+    today_start = datetime(now.year, now.month, now.day, 0, 0, 0)
+    
+    def parse_order_date(date_str):
+        if not date_str:
+            return None
+        try:
+            clean_str = date_str.split('•')[0].strip()
+            return datetime.strptime(clean_str, "%d %b %Y")
+        except Exception:
+            try:
+                if 'T' in date_str:
+                    date_str = date_str.split('T')[0]
+                return datetime.strptime(date_str.strip(), "%Y-%m-%d")
+            except Exception:
+                return None
+
+    def get_order_hour(date_str):
+        if not date_str or ' • ' not in date_str:
+            return 0
+        try:
+            parts = date_str.split(' • ')
+            time_part = parts[1].strip()
+            dt = datetime.strptime(time_part, "%I:%M %p")
+            return dt.hour
+        except Exception:
+            return 0
+
+    def parse_iso_date(d_str):
+        if not d_str: return None
+        try:
+            if 'T' in d_str:
+                d_str = d_str.split('T')[0]
+            return datetime.strptime(d_str, "%Y-%m-%d")
+        except Exception:
+            return None
+
+    if filter_type == 'today':
+        start_dt = today_start
+        end_dt = datetime(now.year, now.month, now.day, 23, 59, 59)
+        labels = ["12 AM", "1 AM", "2 AM", "3 AM", "4 AM", "5 AM", "6 AM", "7 AM", "8 AM", "9 AM", "10 AM", "11 AM", "12 PM", "1 PM", "2 PM", "3 PM", "4 PM", "5 PM", "6 PM", "7 PM", "8 PM", "9 PM", "10 PM", "11 PM"]
+        sales = [0.0] * 24
+        orders_count_arr = [0] * 24
+    elif filter_type == 'yesterday':
+        yest = now - timedelta(days=1)
+        start_dt = datetime(yest.year, yest.month, yest.day, 0, 0, 0)
+        end_dt = datetime(yest.year, yest.month, yest.day, 23, 59, 59)
+        labels = ["12 AM", "1 AM", "2 AM", "3 AM", "4 AM", "5 AM", "6 AM", "7 AM", "8 AM", "9 AM", "10 AM", "11 AM", "12 PM", "1 PM", "2 PM", "3 PM", "4 PM", "5 PM", "6 PM", "7 PM", "8 PM", "9 PM", "10 PM", "11 PM"]
+        sales = [0.0] * 24
+        orders_count_arr = [0] * 24
+    elif filter_type == 'last-7-days':
+        start_dt = today_start - timedelta(days=6)
+        end_dt = datetime(now.year, now.month, now.day, 23, 59, 59)
+        labels = []
+        curr = start_dt
+        while curr <= end_dt:
+            labels.append(curr.strftime("%d %b"))
+            curr += timedelta(days=1)
+        sales = [0.0] * len(labels)
+        orders_count_arr = [0] * len(labels)
+    elif filter_type in ['this-week', 'week']:
+        monday = now - timedelta(days=now.weekday())
+        start_dt = datetime(monday.year, monday.month, monday.day, 0, 0, 0)
+        end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
+        labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        sales = [0.0] * 7
+        orders_count_arr = [0] * 7
+    elif filter_type == 'last-week':
+        monday = now - timedelta(days=now.weekday() + 7)
+        start_dt = datetime(monday.year, monday.month, monday.day, 0, 0, 0)
+        end_dt = start_dt + timedelta(days=6, hours=23, minutes=59, seconds=59)
+        labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
+        sales = [0.0] * 7
+        orders_count_arr = [0] * 7
+    elif filter_type in ['this-month', 'month']:
+        start_dt = datetime(now.year, now.month, 1, 0, 0, 0)
+        next_month = datetime(now.year + 1, 1, 1) if now.month == 12 else datetime(now.year, now.month + 1, 1)
+        end_dt = next_month - timedelta(seconds=1)
+        days_count = (end_dt - start_dt).days + 1
+        labels = [str(i) for i in range(1, days_count + 1)]
+        sales = [0.0] * days_count
+        orders_count_arr = [0] * days_count
+    elif filter_type == 'last-month':
+        prev_month_year = now.year if now.month > 1 else now.year - 1
+        prev_month = now.month - 1 if now.month > 1 else 12
+        start_dt = datetime(prev_month_year, prev_month, 1, 0, 0, 0)
+        next_month = datetime(now.year, now.month, 1, 0, 0, 0)
+        end_dt = next_month - timedelta(seconds=1)
+        days_count = (end_dt - start_dt).days + 1
+        labels = [str(i) for i in range(1, days_count + 1)]
+        sales = [0.0] * days_count
+        orders_count_arr = [0] * days_count
+    elif filter_type in ['this-year', 'year']:
+        start_dt = datetime(now.year, 1, 1, 0, 0, 0)
+        end_dt = datetime(now.year, 12, 31, 23, 59, 59)
+        labels = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+        sales = [0.0] * 12
+        orders_count_arr = [0] * 12
+    elif filter_type == 'custom':
+        s_dt = parse_iso_date(start_date_str)
+        e_dt = parse_iso_date(end_date_str)
+        if s_dt and e_dt:
+            start_dt = datetime(s_dt.year, s_dt.month, s_dt.day, 0, 0, 0)
+            end_dt = datetime(e_dt.year, e_dt.month, e_dt.day, 23, 59, 59)
+        else:
+            start_dt = today_start - timedelta(days=30)
+            end_dt = datetime(now.year, now.month, now.day, 23, 59, 59)
+            filter_type = 'custom'
+        
+        labels = []
+        curr = start_dt
+        while curr <= end_dt:
+            labels.append(curr.strftime("%d %b"))
+            curr += timedelta(days=1)
+        sales = [0.0] * len(labels)
+        orders_count_arr = [0] * len(labels)
+    else:
+        start_dt = datetime(now.year, now.month, 1, 0, 0, 0)
+        next_month = datetime(now.year + 1, 1, 1) if now.month == 12 else datetime(now.year, now.month + 1, 1)
+        end_dt = next_month - timedelta(seconds=1)
+        days_count = (end_dt - start_dt).days + 1
+        labels = [str(i) for i in range(1, days_count + 1)]
+        sales = [0.0] * days_count
+        orders_count_arr = [0] * days_count
+        filter_type = 'this-month'
+
+    customers = User.query.filter_by(role='customer').all()
+    all_products = Product.query.all()
+    
+    product_stats = {
+        p.id: {
+            'id': p.id,
+            'name': p.name,
+            'sold': 0,
+            'revenue': 0.0,
+            'category': p.category,
+            'stock': p.stock,
+            'original_price': p.original_price or p.price,
+            'price': p.price
+        } for p in all_products
+    }
+
+    gross_revenue = 0.0
+    completed_orders_count = 0
+    new_customers_count = sum(1 for c in customers if start_dt <= c.created_at <= end_dt)
+    total_customers_registered = len(customers)
+
+    orders_by_status = {'Completed': 0, 'Delivered': 0, 'Pending': 0, 'Cancelled': 0, 'Refunded': 0, 'Refund Requested': 0, 'Refund Rejected': 0}
+    
+    refund_counts = {'Approved': 0, 'Rejected': 0, 'Requested': 0}
+    refund_total_amount = 0.0
+
+    discounts_total = 0.0
+    discount_orders_count = 0
+    coupon_usage = {}
+    category_metrics = {}
+
+    active_customers_in_period = set()
+    returning_customers_in_period = set()
+    customer_spends = {}
+
+    payment_metrics = {
+        'Cash on Delivery': {'amount': 0.0, 'orders': 0},
+        'UPI': {'amount': 0.0, 'orders': 0},
+        'Credit Card': {'amount': 0.0, 'orders': 0},
+        'Debit Card': {'amount': 0.0, 'orders': 0},
+        'Wallet': {'amount': 0.0, 'orders': 0},
+        'Net Banking': {'amount': 0.0, 'orders': 0}
+    }
+
+    ledger_dict = {}
+
+    for u in customers:
+        orders = u.orders or []
+        for o in orders:
+            status = o.get('status', 'Pending')
+            
+            clean_status = 'Refunded' if status == 'Refund Approved' else status
+            if clean_status in orders_by_status:
+                orders_by_status[clean_status] += 1
+            else:
+                orders_by_status[status] = orders_by_status.get(status, 0) + 1
+
+            o_date_str = o.get('date', '')
+            o_dt = parse_order_date(o_date_str)
+            if not o_dt:
+                continue
+
+            price_val = float(o.get('total', 0))
+
+            if status in ['Completed', 'Delivered']:
+                ledger_key = o_dt.strftime("%Y-%m")
+                ledger_label = o_dt.strftime("%B %Y")
+                if ledger_key not in ledger_dict:
+                    ledger_dict[ledger_key] = {
+                        'month': ledger_label,
+                        'orders': 0,
+                        'revenue': 0.0,
+                    }
+                ledger_dict[ledger_key]['orders'] += 1
+                ledger_dict[ledger_key]['revenue'] += price_val
+
+            is_in_range = (start_dt <= o_dt <= end_dt)
+            
+            if is_in_range:
+                if status == 'Refund Requested':
+                    refund_counts['Requested'] += 1
+                elif status == 'Refund Rejected':
+                    refund_counts['Rejected'] += 1
+                elif status in ['Refunded', 'Refund Approved']:
+                    refund_counts['Approved'] += 1
+                    refund_total_amount += price_val
+
+            if not is_in_range:
+                continue
+
+            if status in target_statuses:
+                gross_revenue += price_val
+                completed_orders_count += 1
+                active_customers_in_period.add(u.id)
+
+                has_prior_orders = False
+                for other_o in orders:
+                    other_status = other_o.get('status', 'Pending')
+                    if other_status in target_statuses:
+                        other_dt = parse_order_date(other_o.get('date', ''))
+                        if other_dt and other_dt < start_dt:
+                            has_prior_orders = True
+                            break
+                if has_prior_orders:
+                    returning_customers_in_period.add(u.id)
+
+                customer_spends[u.id] = customer_spends.get(u.id, 0.0) + price_val
+
+                if filter_type == 'today' or filter_type == 'yesterday':
+                    hr = get_order_hour(o_date_str)
+                    if 0 <= hr < 24:
+                        sales[hr] += price_val
+                        orders_count_arr[hr] += 1
+                elif filter_type == 'last-7-days' or filter_type == 'custom':
+                    offset = (o_dt - start_dt).days
+                    if 0 <= offset < len(sales):
+                        sales[offset] += price_val
+                        orders_count_arr[offset] += 1
+                elif filter_type in ['this-week', 'week', 'last-week']:
+                    weekday = o_dt.weekday()
+                    if 0 <= weekday < 7:
+                        sales[weekday] += price_val
+                        orders_count_arr[weekday] += 1
+                elif filter_type in ['this-month', 'month', 'last-month']:
+                    day_idx = o_dt.day - 1
+                    if 0 <= day_idx < len(sales):
+                        sales[day_idx] += price_val
+                        orders_count_arr[day_idx] += 1
+                elif filter_type in ['this-year', 'year']:
+                    month_idx = o_dt.month - 1
+                    if 0 <= month_idx < 12:
+                        sales[month_idx] += price_val
+                        orders_count_arr[month_idx] += 1
+
+                pm = o.get('paymentMethod', 'Cash on Delivery').lower()
+                pm_key = 'Cash on Delivery'
+                if 'cod' in pm or 'cash' in pm:
+                    pm_key = 'Cash on Delivery'
+                elif 'upi' in pm or 'google' in pm or 'phone' in pm:
+                    pm_key = 'UPI'
+                elif 'credit' in pm:
+                    pm_key = 'Credit Card'
+                elif 'debit' in pm:
+                    pm_key = 'Debit Card'
+                elif 'wallet' in pm:
+                    pm_key = 'Wallet'
+                elif 'banking' in pm or 'net' in pm:
+                    pm_key = 'Net Banking'
+                elif 'card' in pm or 'visa' in pm or 'master' in pm:
+                    pm_key = 'Credit Card'
+                else:
+                    pm_key = 'UPI'
+
+                payment_metrics[pm_key]['amount'] += price_val
+                payment_metrics[pm_key]['orders'] += 1
+
+                items = o.get('items', [])
+                order_subtotal = 0.0
+                for item in items:
+                    pid = item.get('id')
+                    qty = int(item.get('quantity', 1))
+                    iprice = float(item.get('price', 0.0))
+                    item_total = iprice * qty
+                    order_subtotal += item_total
+
+                    cat_name = item.get('category', 'others').lower()
+                    if 'dry' in cat_name:
+                        cat_name = 'dryfruits'
+                    elif 'fruit' in cat_name:
+                        cat_name = 'fruits'
+                    elif 'veggie' in cat_name or 'vegetable' in cat_name:
+                        cat_name = 'vegetables'
+                    elif 'spice' in cat_name:
+                        cat_name = 'spices'
+                    else:
+                        cat_name = 'others'
+
+                    if cat_name not in category_metrics:
+                        category_metrics[cat_name] = {'revenue': 0.0, 'orders': 0, 'qty': 0}
+                    category_metrics[cat_name]['revenue'] += item_total
+                    category_metrics[cat_name]['orders'] += 1
+                    category_metrics[cat_name]['qty'] += qty
+
+                    if pid in product_stats:
+                        product_stats[pid]['sold'] += qty
+                        product_stats[pid]['revenue'] += item_total
+
+                shipping_fee = 0.0 if order_subtotal >= 499 else 40.0
+                actual_discount = max(0.0, order_subtotal + shipping_fee - price_val)
+                if actual_discount > 0:
+                    discounts_total += actual_discount
+                    discount_orders_count += 1
+
+                coupon = o.get('couponCode') or o.get('coupon')
+                if coupon:
+                    coupon_usage[coupon] = coupon_usage.get(coupon, 0) + 1
+
+    for pid, p in product_stats.items():
+        p['profit'] = p['revenue'] * 0.40
+
+    top_selling = sorted([p for p in product_stats.values() if p['sold'] > 0], key=lambda x: x['sold'], reverse=True)[:10]
+    low_selling = sorted([p for p in product_stats.values() if p['sold'] > 0], key=lambda x: x['sold'])[:10]
+    dead_inventory = [p for p in product_stats.values() if p['sold'] == 0]
+
+    total_payment_rev = sum(v['amount'] for v in payment_metrics.values()) or 1.0
+    payment_analytics = []
+    for k, v in payment_metrics.items():
+        payment_analytics.append({
+            'method': k,
+            'amount': v['amount'],
+            'orders': v['orders'],
+            'percentage': round((v['amount'] / total_payment_rev) * 100, 1)
+        })
+
+    expenses_db = FinancialExpense.query.filter(FinancialExpense.date >= start_dt).filter(FinancialExpense.date <= end_dt).all()
+    total_expenses = sum(e.amount for e in expenses_db)
+    
+    expense_breakdown = {
+        'Delivery': sum(e.amount for e in expenses_db if e.category == 'Delivery Charges'),
+        'Packaging': sum(e.amount for e in expenses_db if e.category == 'Packaging Cost'),
+        'Marketing': sum(e.amount for e in expenses_db if e.category == 'Marketing Cost'),
+        'Warehouse': sum(e.amount for e in expenses_db if e.category == 'Warehouse Expenses'),
+        'Salary': sum(e.amount for e in expenses_db if e.category == 'Employee Salary'),
+        'Other': sum(e.amount for e in expenses_db if e.category == 'Other Expenses')
+    }
+
+    cfg = GSTConfig.query.first()
+    gst_percent = cfg.gst_percent if cfg else 18.0
+    gst_collected = gross_revenue * (gst_percent / (100.0 + gst_percent))
+    taxable_revenue = gross_revenue - gst_collected
+    net_revenue_after_tax = taxable_revenue
+
+    product_cost_est = gross_revenue * 0.60
+    shipping_cost_est = completed_orders_count * 40.0
+    profit = gross_revenue - product_cost_est - shipping_cost_est - discounts_total - refund_total_amount - total_expenses
+    profit_margin = round((profit / max(gross_revenue, 1.0)) * 100, 1)
+
+    conv_rate_val = 0.0
+    if total_customers_registered > 0:
+        conv_rate_val = (completed_orders_count / total_customers_registered) * 100
+
+    highest_coupon = max(coupon_usage, key=coupon_usage.get) if coupon_usage else 'None'
+    avg_discount = discounts_total / max(discount_orders_count, 1)
+
+    discount_analytics = {
+        'totalDiscount': discounts_total,
+        'couponUsageCount': sum(coupon_usage.values()),
+        'highestUsedCoupon': highest_coupon,
+        'discountCost': discounts_total,
+        'averageDiscount': avg_discount,
+        'couponList': [{'code': k, 'uses': v} for k, v in coupon_usage.items()]
+    }
+
+    refund_total_req = sum(refund_counts.values()) or 1
+    refund_analytics = {
+        'requests': sum(refund_counts.values()),
+        'approved': refund_counts['Approved'],
+        'rejected': refund_counts['Rejected'],
+        'amount': refund_total_amount,
+        'percentage': round((refund_counts['Approved'] / refund_total_req) * 100, 1)
+    }
+
+    category_pie = []
+    for k, v in category_metrics.items():
+        category_pie.append({
+            'name': k.capitalize() if k != 'dryfruits' else 'Dry Fruits',
+            'revenue': v['revenue'],
+            'orders': v['orders'],
+            'profit': v['revenue'] * 0.40
+        })
+
+    repeat_purchasers = sum(1 for cid in customer_spends if len([o for o in User.query.get(cid).orders if o.get('status') in target_statuses]) > 1)
+    repeat_rate = round((repeat_purchasers / max(len(customer_spends), 1)) * 100, 1)
+    highest_spending_id = max(customer_spends, key=customer_spends.get) if customer_spends else None
+    highest_spending_cust = User.query.get(highest_spending_id).name if highest_spending_id else 'None'
+    highest_spending_amount = customer_spends[highest_spending_id] if highest_spending_id else 0.0
+
+    customer_analytics = {
+        'newCustomers': new_customers_count,
+        'returningCustomers': len(returning_customers_in_period),
+        'repeatPurchaseRate': repeat_rate,
+        'highestSpendingCustomer': highest_spending_cust,
+        'highestSpendingAmount': highest_spending_amount,
+        'averageSpend': gross_revenue / max(len(active_customers_in_period), 1),
+        'lifetimeValue': sum(customer_spends.values()) / max(total_customers_registered, 1)
+    }
+
+    cur_month_start = datetime(now.year, now.month, 1)
+    cur_month_end = datetime(now.year + 1, 1, 1) - timedelta(seconds=1) if now.month == 12 else datetime(now.year, now.month + 1, 1) - timedelta(seconds=1)
+    prev_month_year = now.year if now.month > 1 else now.year - 1
+    prev_month = now.month - 1 if now.month > 1 else 12
+    prev_month_start = datetime(prev_month_year, prev_month, 1)
+    prev_month_end = cur_month_start - timedelta(seconds=1)
+
+    cur_rev = 0.0
+    cur_orders = 0
+    prev_rev = 0.0
+    prev_orders = 0
+
+    for u in customers:
+        for o in u.orders or []:
+            if o.get('status') in target_statuses:
+                o_dt = parse_order_date(o.get('date', ''))
+                if o_dt:
+                    val = float(o.get('total', 0))
+                    if cur_month_start <= o_dt <= cur_month_end:
+                        cur_rev += val
+                        cur_orders += 1
+                    elif prev_month_start <= o_dt <= prev_month_end:
+                        prev_rev += val
+                        prev_orders += 1
+
+    cur_prof = cur_rev * 0.18
+    prev_prof = prev_rev * 0.18
+    cur_aov_m = cur_rev / max(cur_orders, 1)
+    prev_aov_m = prev_rev / max(prev_orders, 1)
+
+    cur_cust_m = sum(1 for c in customers if cur_month_start <= c.created_at <= cur_month_end)
+    prev_cust_m = sum(1 for c in customers if prev_month_start <= c.created_at <= prev_month_end)
+
+    def calc_growth(cur, prev):
+        if prev == 0:
+            return 100.0 if cur > 0 else 0.0
+        return round(((cur - prev) / prev) * 100, 1)
+
+    monthly_comparison = {
+        'revenueGrowth': calc_growth(cur_rev, prev_rev),
+        'orderGrowth': calc_growth(cur_orders, prev_orders),
+        'customerGrowth': calc_growth(cur_cust_m, prev_cust_m),
+        'profitGrowth': calc_growth(cur_prof, prev_prof),
+        'aovGrowth': calc_growth(cur_aov_m, prev_aov_m)
+    }
+
+    for m_key, val in ledger_dict.items():
+        try:
+            m_end = datetime.strptime(m_key + "-01", "%Y-%m-%d") + timedelta(days=32)
+            m_end = datetime(m_end.year, m_end.month, 1) - timedelta(seconds=1)
+        except Exception:
+            m_end = datetime.now()
+        cust_at_month = sum(1 for c in customers if c.created_at <= m_end)
+        val['conversion'] = f"{round((val['orders'] / max(cust_at_month, 1)) * 100, 1)}%"
+        val['revenue'] = round(val['revenue'])
+
+    monthly_ledger = sorted(list(ledger_dict.values()), key=lambda x: datetime.strptime(x['month'], "%B %Y"), reverse=True)
+
+    return jsonify({
+        'revenue': gross_revenue,
+        'ordersCount': completed_orders_count,
+        'aov': gross_revenue / max(completed_orders_count, 1),
+        'conversionRate': round(conv_rate_val, 2),
+        'newRegisteredProfiles': new_customers_count,
+        'ordersByStatus': orders_by_status,
+        'monthlyLedger': monthly_ledger,
+        'taxCalculation': {
+            'gstCollected': gst_collected,
+            'taxableRevenue': taxable_revenue,
+            'netRevenueAfterTax': net_revenue_after_tax,
+            'taxPercentage': gst_percent
+        },
+        'profitCalculation': {
+            'grossRevenue': gross_revenue,
+            'netRevenue': taxable_revenue,
+            'productCost': product_cost_est,
+            'shippingCost': shipping_cost_est,
+            'discounts': discounts_total,
+            'refunds': refund_total_amount,
+            'expenses': total_expenses,
+            'profit': profit,
+            'profitMargin': profit_margin
+        },
+        'expenseTracking': {
+            'totalExpenses': total_expenses,
+            'breakdown': expense_breakdown
+        },
+        'discountAnalytics': discount_analytics,
+        'refundAnalytics': refund_analytics,
+        'topSelling': top_selling,
+        'lowSelling': low_selling,
+        'deadInventory': [{ 'name': p['name'], 'category': p['category'], 'stock': p['stock'] } for p in dead_inventory[:10]],
+        'categoryRevenue': category_pie,
+        'customerAnalytics': customer_analytics,
+        'paymentAnalytics': payment_analytics,
+        'monthlyComparison': monthly_comparison,
+        'trends': {
+            'labels': labels,
+            'sales': sales,
+            'orders': orders_count_arr
+        }
+    }), 200
+
+# --- EXPENSES ENDPOINTS ---
+@admin_bp.route('/expenses', methods=['GET'])
+def list_expenses():
+    expenses = FinancialExpense.query.order_by(FinancialExpense.date.desc()).all()
+    return jsonify({'expenses': [e.to_json() for e in expenses]}), 200
+
+@admin_bp.route('/expenses', methods=['POST'])
+def create_expense():
+    data = request.get_json() or {}
+    category = data.get('category', '').strip()
+    amount = float(data.get('amount', 0.0))
+    description = data.get('description', '').strip()
+    date_str = data.get('date')
+
+    if not category or amount <= 0:
+        return jsonify({'error': 'Category and valid amount are required.'}), 400
+
+    exp_date = datetime.utcnow()
+    if date_str:
+        try:
+            exp_date = datetime.fromisoformat(date_str.replace('Z', ''))
+        except Exception:
+            pass
+
+    expense = FinancialExpense(category=category, amount=amount, date=exp_date, description=description)
+    db.session.add(expense)
+    db.session.commit()
+    return jsonify({'message': 'Expense recorded successfully', 'expense': expense.to_json()}), 201
+
+@admin_bp.route('/expenses/<int:id>', methods=['DELETE'])
+def delete_expense(id):
+    expense = FinancialExpense.query.get(id)
+    if not expense:
+        return jsonify({'error': 'Expense not found.'}), 404
+    db.session.delete(expense)
+    db.session.commit()
+    return jsonify({'message': 'Expense deleted successfully'}), 200
+
+# --- GST CONFIG ENDPOINTS ---
+@admin_bp.route('/gst-config', methods=['GET'])
+def get_gst():
+    cfg = GSTConfig.query.first()
+    if not cfg:
+        cfg = GSTConfig(gst_percent=18.0)
+        db.session.add(cfg)
+        db.session.commit()
+    return jsonify({'gst_percent': cfg.gst_percent}), 200
+
+@admin_bp.route('/gst-config', methods=['POST'])
+def update_gst():
+    data = request.get_json() or {}
+    percent = float(data.get('gst_percent', 18.0))
+    if percent < 0 or percent > 100:
+        return jsonify({'error': 'GST percentage must be between 0 and 100.'}), 400
+
+    cfg = GSTConfig.query.first()
+    if not cfg:
+        cfg = GSTConfig(gst_percent=percent)
+        db.session.add(cfg)
+    else:
+        cfg.gst_percent = percent
+    db.session.commit()
+    return jsonify({'message': 'GST configuration updated successfully', 'gst_percent': cfg.gst_percent}), 200
 
 # --- PRODUCT ENDPOINTS ---
 @admin_bp.route('/products', methods=['GET'])

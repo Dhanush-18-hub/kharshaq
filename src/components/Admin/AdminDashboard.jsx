@@ -40,6 +40,7 @@ import CustomerManagementView from './CustomerManagementView';
 import OffersManagementView from './OffersManagementView';
 import ReportsView from './ReportsView';
 import HomePageManagementView from './HomePageManagementView';
+import AdminProfileView from './AdminProfileView';
 
 export default function AdminDashboard() {
   const { user, logout } = useAuth();
@@ -50,6 +51,8 @@ export default function AdminDashboard() {
   const [darkMode, setDarkMode] = useState(false);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [loadingStats, setLoadingStats] = useState(false);
+  const mainRef = React.useRef(null);
 
   // Search state across views
   const [globalSearch, setGlobalSearch] = useState('');
@@ -81,22 +84,49 @@ export default function AdminDashboard() {
     }
   };
 
-  // Fetch metrics data on mount
-  const fetchStats = async () => {
+  // Fetch metrics data with filter parameters
+  const fetchStats = async (filter = 'this-week', startDate = null, endDate = null) => {
     try {
-      setLoading(true);
-      const res = await api.get('/api/admin/stats');
+      setLoadingStats(true);
+      let url = `/api/admin/stats?filter=${filter}`;
+      if (filter === 'custom' && startDate && endDate) {
+        url += `&startDate=${startDate}&endDate=${endDate}`;
+      }
+      const res = await api.get(url);
       setStats(res.data);
     } catch (err) {
       console.error('Failed to fetch admin stats:', err);
     } finally {
+      setLoadingStats(false);
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    fetchStats();
+    fetchStats('this-week');
   }, []);
+
+  // Reset workspace scroll to top when activeTab switches
+  useEffect(() => {
+    const scrollToTop = () => {
+      if (mainRef.current) {
+        mainRef.current.scrollTop = 0;
+        mainRef.current.scrollTo({ top: 0, behavior: 'auto' });
+      }
+      window.scrollTo(0, 0);
+    };
+
+    scrollToTop();
+
+    // Run on next tick to override asynchronous browser layout recalculations
+    const timer = setTimeout(scrollToTop, 50);
+    const animFrame = requestAnimationFrame(scrollToTop);
+
+    return () => {
+      clearTimeout(timer);
+      cancelAnimationFrame(animFrame);
+    };
+  }, [activeTab]);
 
   const handleLogout = () => {
     logout();
@@ -135,7 +165,14 @@ export default function AdminDashboard() {
 
     switch (activeTab) {
       case 'Dashboard':
-        return <DashboardView stats={stats} setActiveTab={setActiveTab} refreshStats={fetchStats} />;
+        return (
+          <DashboardView 
+            stats={stats} 
+            loadingStats={loadingStats} 
+            setActiveTab={setActiveTab} 
+            refreshStats={fetchStats} 
+          />
+        );
       case 'Products':
         return <ProductManagementView />;
       case 'Categories':
@@ -256,6 +293,8 @@ export default function AdminDashboard() {
             </p>
           </div>
         );
+      case 'Profile':
+        return <AdminProfileView />;
       default:
         return <DashboardView stats={stats} setActiveTab={setActiveTab} refreshStats={fetchStats} />;
     }
@@ -348,11 +387,14 @@ export default function AdminDashboard() {
         {/* Sidebar Footer / Profile setting indicator */}
         <div className="p-4 border-t border-gray-50 bg-gray-50/20">
           <div className="flex items-center justify-between bg-white border border-gray-100 p-2.5 rounded-2xl shadow-sm">
-            <div className="flex items-center gap-2.5">
+            <div 
+              onClick={() => setActiveTab('Profile')}
+              className="flex items-center gap-2.5 cursor-pointer hover:opacity-80 transition select-none"
+            >
               <img
-                src={user?.profileImage || "https://api.dicebear.com/7.x/adventurer/svg?seed=Admin"}
+                src={user?.profile_image || "https://api.dicebear.com/7.x/adventurer/svg?seed=Admin"}
                 alt="Admin Avatar"
-                className="w-8 h-8 rounded-xl bg-gray-100"
+                className="w-8 h-8 rounded-xl bg-gray-100 object-cover"
               />
               <div className="truncate w-[110px]">
                 <h5 className="font-bold text-[12px] text-gray-900 leading-tight truncate">{user?.name || 'Admin User'}</h5>
@@ -423,12 +465,23 @@ export default function AdminDashboard() {
             </div>
 
             {/* Profile Avatar Tag */}
-            <div className="flex items-center gap-2.5 select-none pl-2 border-l border-gray-100">
-              <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs">
-                A
-              </div>
+            <div 
+              onClick={() => setActiveTab('Profile')}
+              className="flex items-center gap-2.5 select-none pl-2 border-l border-gray-100 cursor-pointer hover:opacity-80 transition"
+            >
+              {user?.profile_image ? (
+                <img 
+                  src={user.profile_image} 
+                  alt="Admin Avatar" 
+                  className="w-8 h-8 rounded-full object-cover border border-gray-100" 
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold text-xs uppercase">
+                  {(user?.name || 'A')[0]}
+                </div>
+              )}
               <div className="hidden md:block text-left">
-                <span className="block text-[11px] font-bold text-gray-800 leading-tight">Admin</span>
+                <span className="block text-[11px] font-bold text-gray-800 leading-tight">{user?.name || 'Admin'}</span>
                 <span className="block text-[9px] text-gray-400 leading-none">Super Admin</span>
               </div>
             </div>
@@ -436,7 +489,7 @@ export default function AdminDashboard() {
         </header>
 
         {/* Dashboard content workspace wrapper */}
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8 scrollbar-thin">
+        <main ref={mainRef} className="flex-1 overflow-y-auto p-6 lg:p-8 scrollbar-thin">
           {renderActiveView()}
         </main>
       </div>

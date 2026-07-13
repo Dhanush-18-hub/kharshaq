@@ -17,14 +17,32 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-export default function DashboardView({ stats, setActiveTab, refreshStats }) {
+export default function DashboardView({ stats, loadingStats, setActiveTab, refreshStats }) {
   const [selectedPoint, setSelectedPoint] = useState(null);
+  const [activeFilter, setActiveFilter] = useState('this-week');
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
 
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) return 'Good Morning';
     if (hour >= 12 && hour < 17) return 'Good Afternoon';
     return 'Good Evening';
+  };
+
+  // Trigger data refetch when activeFilter changes
+  React.useEffect(() => {
+    if (activeFilter !== 'custom') {
+      refreshStats(activeFilter);
+    }
+  }, [activeFilter]);
+
+  const handleApplyCustom = () => {
+    if (!startDate || !endDate) {
+      toast.error('Please select both start and end dates.');
+      return;
+    }
+    refreshStats('custom', startDate, endDate);
   };
 
   // Convert numbers to Indian format (e.g. ₹2,45,680)
@@ -36,24 +54,91 @@ export default function DashboardView({ stats, setActiveTab, refreshStats }) {
     }).format(val);
   };
 
-  // Format values
-  const revenueStr = stats ? formatCurrency(stats.revenue) : '₹2,45,680';
-  const ordersCount = stats?.ordersCount ?? 1248;
-  const customersCount = stats?.customersCount ?? 3265;
-  const productsCount = stats?.productsCount ?? 512;
-  const pendingOrders = stats?.pendingOrders ?? 25;
-  const profitStr = stats ? formatCurrency(stats.profit) : '₹44,222';
+  // Skeleton Loader rendering
+  if (loadingStats || !stats) {
+    return (
+      <div className="space-y-8 animate-pulse text-left select-none">
+        {/* Welcome Header Skeleton */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-7 w-48 bg-gray-200 rounded-xl" />
+            <div className="h-4 w-64 bg-gray-200 rounded-lg" />
+          </div>
+          <div className="h-9 w-24 bg-gray-200 rounded-xl" />
+        </div>
+        {/* Cards Skeleton */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="bg-white border border-gray-100 p-5 rounded-2xl h-[105px] flex items-center justify-between shadow-sm">
+              <div className="space-y-2.5 w-2/3">
+                <div className="h-3 w-16 bg-gray-200 rounded" />
+                <div className="h-6 w-20 bg-gray-200 rounded" />
+                <div className="h-4 w-12 bg-gray-200 rounded-md" />
+              </div>
+              <div className="w-11 h-11 bg-gray-50 rounded-xl" />
+            </div>
+          ))}
+        </div>
+        {/* Chart Skeleton */}
+        <div className="bg-white border border-gray-100 rounded-3xl p-6 h-[320px] flex flex-col justify-between shadow-sm">
+          <div className="flex justify-between items-center">
+            <div className="space-y-2">
+              <div className="h-4 w-28 bg-gray-200 rounded" />
+              <div className="h-3 w-40 bg-gray-200 rounded" />
+            </div>
+            <div className="h-8 w-24 bg-gray-200 rounded-xl" />
+          </div>
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-10 h-10 border-4 border-emerald-100 border-t-emerald-600 rounded-full animate-spin" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  // Sales points for SVG interactive chart
-  const weekData = [
-    { day: 'Mon', sales: 28000, x: 30, y: 140 },
-    { day: 'Tue', sales: 31000, x: 100, y: 125 },
-    { day: 'Wed', sales: 34000, x: 170, y: 110 },
-    { day: 'Thu', sales: 30000, x: 240, y: 130 },
-    { day: 'Fri', sales: 48000, x: 310, y: 50 },
-    { day: 'Sat', sales: 36000, x: 380, y: 100 },
-    { day: 'Sun', sales: 42000, x: 450, y: 80 }
-  ];
+  // Format values
+  const revenueStr = stats ? formatCurrency(stats.revenue) : '₹0';
+  const ordersCount = stats?.ordersCount ?? 0;
+  const customersCount = stats?.customersCount ?? 0;
+  const productsCount = stats?.productsCount ?? 0;
+  const pendingOrders = stats?.pendingOrders ?? 0;
+  const profitStr = stats ? formatCurrency(stats.profit) : '₹0';
+
+  // Sales points computed dynamically from backend stats
+  const labels = stats?.salesOverview?.labels || [];
+  const salesValues = stats?.salesOverview?.sales || [];
+  const ordersValues = stats?.salesOverview?.orders || [];
+
+  // Dynamically scale y-coordinate based on maximum sales in the current dataset
+  const maxSalesVal = salesValues.length > 0 ? Math.max(...salesValues, 1000) : 1000;
+  
+  const getChartY = (salesVal) => {
+    const minY = 160;
+    const maxY = 30;
+    const ratio = salesVal / maxSalesVal;
+    return minY - ratio * (minY - maxY);
+  };
+
+  const weekData = labels.map((label, idx) => {
+    const sales = salesValues[idx] || 0;
+    const ordersCountVal = ordersValues[idx] || 0;
+    const x = labels.length > 1 ? 30 + (idx / (labels.length - 1)) * 420 : 30;
+    const y = getChartY(sales);
+    return { day: label, sales, ordersCount: ordersCountVal, x, y };
+  });
+
+  // Dynamically compute display helper for label spacing
+  const getDisplayLabel = (label, idx, total) => {
+    if (total <= 12) return label;
+    if (total === 24) return idx % 4 === 0 ? label : '';
+    if (total > 24 && total <= 31) return idx % 5 === 0 ? label : '';
+    const step = Math.ceil(total / 6) || 1;
+    return idx % step === 0 ? label : '';
+  };
+
+  // Dynamically compute the path strings
+  const linePath = weekData.length > 0 ? "M " + weekData.map(pt => `${pt.x},${pt.y}`).join(" L ") : "";
+  const areaPath = weekData.length > 0 ? `M 30,180 L ${weekData.map(pt => `${pt.x},${pt.y}`).join(" L ")} L 450,180 Z` : "";
 
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -155,76 +240,134 @@ export default function DashboardView({ stats, setActiveTab, refreshStats }) {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Interactive Line Chart */}
         <div className="bg-white border border-gray-100 rounded-3xl p-6 shadow-sm shadow-gray-50 lg:col-span-8 flex flex-col justify-between select-none">
-          <div className="flex justify-between items-center mb-6">
-            <div>
-              <h4 className="font-extrabold text-base text-gray-900 tracking-tight">Sales Overview</h4>
-              <p className="text-xs font-semibold text-gray-400 mt-0.5">Track growth weekly analytics</p>
+          <div className="flex flex-col mb-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div>
+                <h4 className="font-extrabold text-base text-gray-900 tracking-tight">Sales Overview</h4>
+                <p className="text-xs font-semibold text-gray-400 mt-0.5">Track growth database-driven analytics</p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {[
+                  { id: 'today', label: 'Today' },
+                  { id: 'this-week', label: 'This Week' },
+                  { id: 'this-month', label: 'This Month' },
+                  { id: 'this-year', label: 'This Year' },
+                  { id: 'custom', label: 'Custom Range' }
+                ].map((f) => (
+                  <button
+                    key={f.id}
+                    onClick={() => setActiveFilter(f.id)}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition select-none cursor-pointer border ${
+                      activeFilter === f.id
+                        ? 'bg-emerald-600 border-emerald-600 text-white shadow-sm shadow-emerald-100/50'
+                        : 'bg-white border-gray-100 text-gray-500 hover:bg-gray-50'
+                    }`}
+                  >
+                    {f.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <select className="bg-gray-50 border border-gray-100 text-xs font-bold text-gray-600 px-3 py-1.5 rounded-xl outline-none focus:ring-1 focus:ring-emerald-500">
-              <option>This Week</option>
-              <option>Last Week</option>
-            </select>
+
+            {/* Collapsible custom date picker range */}
+            {activeFilter === 'custom' && (
+              <div className="flex flex-wrap items-center gap-4 bg-gray-50/50 border border-gray-100/80 p-3 rounded-2xl mt-4 select-none animate-fadeIn">
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">From</span>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="bg-white border border-gray-200 rounded-xl px-2.5 py-1 text-xs font-bold text-gray-600 outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] font-black text-gray-400 uppercase tracking-wider">To</span>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="bg-white border border-gray-200 rounded-xl px-2.5 py-1 text-xs font-bold text-gray-600 outline-none focus:border-emerald-500"
+                  />
+                </div>
+                <button
+                  onClick={handleApplyCustom}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer select-none"
+                >
+                  Apply Filter
+                </button>
+              </div>
+            )}
           </div>
 
           {/* Line Chart Draw Area */}
           <div className="relative h-[220px] w-full flex items-end">
-            <svg viewBox="0 0 480 180" className="w-full h-full overflow-visible">
-              <defs>
-                <linearGradient id="line-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stop-color="#10b981" stop-opacity="0.12" />
-                  <stop offset="100%" stop-color="#10b981" stop-opacity="0.0" />
-                </linearGradient>
-              </defs>
+            {ordersCount === 0 ? (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-100 select-none">
+                <ShoppingBag className="w-10 h-10 text-gray-300 mb-2 stroke-[1.5]" />
+                <p className="text-sm font-semibold text-gray-500">No sales data available</p>
+                <p className="text-[11px] text-gray-400 font-medium mt-1">There are no completed or delivered orders in this period.</p>
+              </div>
+            ) : (
+              <svg viewBox="0 0 480 180" className="w-full h-full overflow-visible">
+                <defs>
+                  <linearGradient id="line-grad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.12" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
 
-              {/* Grid Lines */}
-              <line x1="0" y1="30" x2="480" y2="30" stroke="#f3f4f6" strokeDasharray="3 3" />
-              <line x1="0" y1="90" x2="480" y2="90" stroke="#f3f4f6" strokeDasharray="3 3" />
-              <line x1="0" y1="150" x2="480" y2="150" stroke="#f3f4f6" strokeDasharray="3 3" />
+                {/* Grid Lines */}
+                <line x1="0" y1="30" x2="480" y2="30" stroke="#f3f4f6" strokeDasharray="3 3" />
+                <line x1="0" y1="90" x2="480" y2="90" stroke="#f3f4f6" strokeDasharray="3 3" />
+                <line x1="0" y1="150" x2="480" y2="150" stroke="#f3f4f6" strokeDasharray="3 3" />
 
-              {/* Area Under Curve */}
-              <path 
-                d="M 30,140 L 100,125 L 170,110 L 240,130 L 310,50 L 380,100 L 450,80 L 450,180 L 30,180 Z" 
-                fill="url(#line-grad)" 
-              />
-
-              {/* Line Curve */}
-              <path 
-                d="M 30,140 L 100,125 L 170,110 L 240,130 L 310,50 L 380,100 L 450,80" 
-                fill="none" 
-                stroke="#059669" 
-                strokeWidth="3.5" 
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-
-              {/* Interactive nodes */}
-              {weekData.map((pt, i) => (
-                <circle 
-                  key={i}
-                  cx={pt.x}
-                  cy={pt.y}
-                  r={selectedPoint?.day === pt.day ? 7 : 4.5}
-                  fill={selectedPoint?.day === pt.day ? "#059669" : "#ffffff"}
-                  stroke="#059669"
-                  strokeWidth={selectedPoint?.day === pt.day ? 3.5 : 2}
-                  className="cursor-pointer transition-all duration-150"
-                  onMouseEnter={() => setSelectedPoint(pt)}
-                  onMouseLeave={() => setSelectedPoint(null)}
+                {/* Area Under Curve */}
+                <path 
+                  d={areaPath} 
+                  fill="url(#line-grad)" 
                 />
-              ))}
-            </svg>
+
+                {/* Line Curve */}
+                <path 
+                  d={linePath} 
+                  fill="none" 
+                  stroke="#059669" 
+                  strokeWidth="3.5" 
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+
+                {/* Interactive nodes */}
+                {weekData.map((pt, i) => (
+                  <circle 
+                    key={i}
+                    cx={pt.x}
+                    cy={pt.y}
+                    r={selectedPoint?.day === pt.day ? 7 : 4.5}
+                    fill={selectedPoint?.day === pt.day ? "#059669" : "#ffffff"}
+                    stroke="#059669"
+                    strokeWidth={selectedPoint?.day === pt.day ? 3.5 : 2}
+                    className="cursor-pointer transition-all duration-150"
+                    onMouseEnter={() => setSelectedPoint(pt)}
+                    onMouseLeave={() => setSelectedPoint(null)}
+                  />
+                ))}
+              </svg>
+            )}
 
             {/* Hover Tooltip box */}
             {selectedPoint && (
               <div 
-                className="absolute bg-emerald-950 text-white px-3 py-2 rounded-xl text-[10px] font-bold pointer-events-none shadow-md flex flex-col border border-emerald-800"
+                className="absolute bg-emerald-950 text-white px-3 py-2.5 rounded-xl text-[10px] font-bold pointer-events-none shadow-md flex flex-col border border-emerald-800 z-50 text-left min-w-[125px]"
                 style={{ 
-                  left: `${(selectedPoint.x / 480) * 85}%`, 
+                  left: `${Math.min(Math.max((selectedPoint.x / 480) * 85, 5), 80)}%`, 
                   bottom: `${180 - selectedPoint.y - 20}px` 
                 }}
               >
-                <span>{selectedPoint.day} sales</span>
-                <span className="text-[12px] font-extrabold mt-0.5">{formatCurrency(selectedPoint.sales)}</span>
+                <span className="text-gray-400 font-semibold">{selectedPoint.day}</span>
+                <span className="text-[11px] font-extrabold mt-1 text-emerald-400">Sales: {formatCurrency(selectedPoint.sales)}</span>
+                <span className="text-gray-300 mt-0.5">Orders: {selectedPoint.ordersCount}</span>
               </div>
             )}
           </div>
@@ -232,7 +375,9 @@ export default function DashboardView({ stats, setActiveTab, refreshStats }) {
           {/* Graph labels */}
           <div className="flex justify-between items-center px-4 mt-4 border-t border-gray-50 pt-4">
             {weekData.map((pt, i) => (
-              <span key={i} className="text-[11px] font-bold text-gray-400">{pt.day}</span>
+              <span key={i} className="text-[11px] font-bold text-gray-400 min-w-[20px] text-center">
+                {getDisplayLabel(pt.day, i, weekData.length)}
+              </span>
             ))}
           </div>
         </div>
