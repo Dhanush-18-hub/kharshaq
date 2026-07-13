@@ -465,7 +465,14 @@ function AppContent({
     if (path === '/signup') return 'SignUp';
     if (path === '/wishlist') return 'Wishlist';
     
-    const cleanPath = path.replace('/', '').toLowerCase().trim();
+    // Strip "/category" if present, then strip leading/trailing slashes
+    let cleanPath = path.toLowerCase().trim();
+    if (cleanPath.startsWith('/category/')) {
+      cleanPath = cleanPath.replace('/category/', '');
+    } else {
+      cleanPath = cleanPath.replace('/', '');
+    }
+    
     const categoriesNames = categories && categories.length > 0
       ? categories.map(c => c.name.toLowerCase().replace(/\s+/g, ''))
       : ['fruits', 'vegetables', 'spices', 'dryfruits'];
@@ -488,7 +495,7 @@ function AppContent({
       'login': '/login',
       'signup': '/signup'
     };
-    navigate(tabToPathMap[cleanTab] || `/${cleanTab}`);
+    navigate(tabToPathMap[cleanTab] || `/category/${cleanTab}`);
   };
 
   const renderHomepageSections = () => {
@@ -686,6 +693,17 @@ function AppContent({
 
            {/* Dynamic Category Page Route */}
           <Route path="/:categoryName" element={
+            <CategoryRouteWrapper
+              addToCart={addToCart} 
+              getItemQuantity={getItemQuantity} 
+              updateQuantity={updateQuantity} 
+              selectedProductId={selectedProductId}
+              setSelectedProductId={setSelectedProductId}
+              toggleWishlist={toggleWishlist}
+              isInWishlist={isInWishlist}
+            />
+          } />
+          <Route path="/category/:categoryName" element={
             <CategoryRouteWrapper
               addToCart={addToCart} 
               getItemQuantity={getItemQuantity} 
