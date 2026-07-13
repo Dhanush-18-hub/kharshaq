@@ -1112,6 +1112,23 @@ def update_order_status(user_id, order_id):
     for o in orders:
         clean_o_id = str(o.get('id', '')).replace('#', '').replace('KSQ', '').strip()
         if clean_o_id == clean_order_id:
+            old_status = o.get('status', 'Pending')
+            if new_status in ['Cancelled', 'Refunded'] and old_status not in ['Cancelled', 'Refunded']:
+                for item in o.get('items', []):
+                    pid = item.get('id')
+                    qty = int(item.get('quantity', 1))
+                    if pid:
+                        prod = Product.query.get(pid)
+                        if prod:
+                            prod.stock += qty
+            elif old_status in ['Cancelled', 'Refunded'] and new_status not in ['Cancelled', 'Refunded']:
+                for item in o.get('items', []):
+                    pid = item.get('id')
+                    qty = int(item.get('quantity', 1))
+                    if pid:
+                        prod = Product.query.get(pid)
+                        if prod:
+                            prod.stock = max(0, prod.stock - qty)
             o['status'] = new_status
             updated = True
             break

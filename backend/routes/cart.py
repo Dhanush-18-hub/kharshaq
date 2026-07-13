@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from backend.models import db, User
+from backend.models import db, User, Product
 
 cart_bp = Blueprint('cart', __name__)
 
@@ -59,6 +59,19 @@ def sync_cart():
         
     orders = data.get('orders')
     if orders is not None:
+        # Stock management: identify newly added orders in this sync request
+        existing_order_ids = {str(o.get('id', '')).strip() for o in (user.orders or []) if o.get('id')}
+        new_orders = [o for o in orders if str(o.get('id', '')).strip() not in existing_order_ids]
+        
+        for new_o in new_orders:
+            for item in new_o.get('items', []):
+                pid = item.get('id')
+                qty = int(item.get('quantity', 1))
+                if pid:
+                    prod = Product.query.get(pid)
+                    if prod:
+                        prod.stock = max(0, prod.stock - qty)
+                        
         user.orders = orders
         
     payment_methods = data.get('payment_methods')

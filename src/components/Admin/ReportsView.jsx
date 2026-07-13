@@ -581,33 +581,45 @@ export default function ReportsView() {
                   <path d={chartLinePath} fill="none" stroke="#059669" strokeWidth="3" strokeLinecap="round" />
 
                   {chartPoints.map((pt, i) => (
-                    <circle 
-                      key={i} 
-                      cx={pt.x} 
-                      cy={pt.y} 
-                      r={7} 
-                      fill={selectedPoint?.label === pt.label ? '#059669' : '#ffffff'} 
-                      stroke="#059669" 
-                      strokeWidth={selectedPoint?.label === pt.label ? 3.5 : 2} 
-                      className="cursor-pointer transition-all"
-                      onMouseEnter={() => setSelectedPoint(pt)}
-                      onMouseLeave={() => setSelectedPoint(null)}
-                    />
+                    <g key={i}>
+                      {/* Visible dot node */}
+                      <circle 
+                        cx={pt.x} 
+                        cy={pt.y} 
+                        r={7} 
+                        fill={selectedPoint?.label === pt.label ? '#059669' : '#ffffff'} 
+                        stroke="#059669" 
+                        strokeWidth={selectedPoint?.label === pt.label ? 3.5 : 2} 
+                        className="transition-all"
+                        pointerEvents="none"
+                      />
+                      {/* Large invisible interactive hover zone */}
+                      <circle
+                        cx={pt.x}
+                        cy={pt.y}
+                        r={24}
+                        fill="transparent"
+                        className="cursor-pointer"
+                        onMouseEnter={() => setSelectedPoint(pt)}
+                        onMouseLeave={() => setSelectedPoint(null)}
+                      />
+                    </g>
                   ))}
                 </svg>
               )}
 
               {selectedPoint && (
                 <div 
-                  className="absolute bg-emerald-950 text-white rounded-xl px-3 py-2 text-[10px] font-bold shadow-lg border border-emerald-800/80 z-50 text-left min-w-[120px]"
+                  className="absolute bg-emerald-950 text-white rounded-xl px-3 py-2 text-[10px] font-bold shadow-lg border border-emerald-800/80 z-50 text-left min-w-[120px] pointer-events-none"
                   style={{ 
-                    left: `${Math.min(Math.max((selectedPoint.x / 480) * 85, 5), 80)}%`, 
-                    bottom: `${180 - selectedPoint.y - 10}px` 
+                    left: `${(selectedPoint.x / 480) * 100}%`, 
+                    bottom: `${((180 - selectedPoint.y + 15) / 180) * 100}%`,
+                    transform: 'translateX(-50%)'
                   }}
                 >
                   <div className="text-gray-400">{selectedPoint.label}</div>
                   <div className="text-emerald-400 mt-0.5 text-[11px] font-extrabold font-sans">Sales: {formatCurrency(selectedPoint.sales)}</div>
-                  <div className="text-gray-200 mt-0.5">Orders: {selectedPoint.orders}</div>
+                  <div className="text-gray-200 mt-0.5 font-sans">Orders: {selectedPoint.orders}</div>
                 </div>
               )}
             </div>
