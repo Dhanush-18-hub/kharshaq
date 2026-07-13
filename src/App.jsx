@@ -72,6 +72,11 @@ function AppContent({
   const userRef = useRef(user);
   userRef.current = user;
 
+  // Scroll to top of window on page navigation (route changes)
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
+  }, [location.pathname]);
+
   // Sync cart items to database automatically when user is logged in
   useEffect(() => {
     syncCartItems(cartItems);
