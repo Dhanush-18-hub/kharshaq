@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
-from backend.models import db, User, Product, Category, Offer, SubCategory, BroadcastNotification, FinancialExpense, GSTConfig
+from models import db, User, Product, Category, Offer, SubCategory, BroadcastNotification, FinancialExpense, GSTConfig
 from datetime import datetime, timedelta
 import random
 

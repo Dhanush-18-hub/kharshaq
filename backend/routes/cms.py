@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, get_jwt
-from backend.models import (
+from models import (
     db, Product, Category, HomepageSettings, HeroBanner, Announcement,
     HomepageFeature, HomepageCategory, PromoCard, Testimonial,
     NewsletterSettings, HomepageLayout, SeasonalCollection

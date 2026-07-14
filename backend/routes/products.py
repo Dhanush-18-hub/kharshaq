@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, request
-from backend.models import db, Product, Category, Offer, SubCategory, BroadcastNotification
+from models import db, Product, Category, Offer, SubCategory, BroadcastNotification
 
 products_bp = Blueprint('products_bp', __name__)
 

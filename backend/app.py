@@ -2,19 +2,19 @@ import os
 from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_jwt_extended import JWTManager
-from backend.config import Config
-from backend.models import (
+from config import Config
+from models import (
     db, User, Product, Category, SubCategory, Offer,
     HomepageSettings, HeroBanner, Announcement, HomepageFeature,
     HomepageCategory, PromoCard, Testimonial, NewsletterSettings,
     HomepageLayout, SeasonalCollection
 )
-from backend.routes.auth import auth_bp
-from backend.routes.user import user_bp
-from backend.routes.cart import cart_bp
-from backend.routes.admin import admin_bp
-from backend.routes.products import products_bp
-from backend.routes.cms import cms_bp
+from routes.auth import auth_bp
+from routes.user import user_bp
+from routes.cart import cart_bp
+from routes.admin import admin_bp
+from routes.products import products_bp
+from routes.cms import cms_bp
 from flask_bcrypt import Bcrypt
 
 def create_app():

@@ -5,7 +5,7 @@ import requests
 from flask import Blueprint, request, jsonify, current_app
 from flask_jwt_extended import create_access_token, jwt_required, get_jwt_identity
 from flask_bcrypt import Bcrypt
-from backend.models import db, User, LoginHistory, OTPStore
+from models import db, User, LoginHistory, OTPStore
 
 # Use the bcrypt instance
 bcrypt = Bcrypt()
