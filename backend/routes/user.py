@@ -2,7 +2,7 @@ import re
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from flask_bcrypt import Bcrypt
-from backend.models import db, User, LoginHistory
+from models import db, User, LoginHistory
 
 bcrypt = Bcrypt()
 user_bp = Blueprint('user', __name__)
