@@ -63,6 +63,14 @@ def create_app():
     # Create DB tables and seed data
     with app.app_context():
         db.create_all()
+        print("===== PRODUCTS =====")
+
+products = Product.query.all()
+
+for p in products:
+    print(f"{p.id} | {p.name}")
+
+print("====================")
         print("\n========== DATABASE USERS ==========")
         users = User.query.all()
 
