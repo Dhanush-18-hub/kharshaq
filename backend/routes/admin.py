@@ -1400,16 +1400,20 @@ def update_category(name):
 
 @admin_bp.route('/categories/<name>', methods=['DELETE'])
 def delete_category(name):
+    print("DELETE endpoint reached")
     cat = Category.query.filter_by(slug=name).first() or Category.query.filter_by(name=name).first() or Category.query.get(name)
     if not cat:
+        print("Deletion failed: Category not found")
         return jsonify({'error': 'Category not found.'}), 404
         
-    data = request.get_json() or {}
+    print("Category found")
+    data = request.get_json(silent=True) or {}
     action = data.get('action') # 'move' or 'delete_products'
     move_to = data.get('moveTo') # slug/name of destination category
     
     cat_slug = cat.slug or cat.name.lower().replace(' ', '')
     products_count = Product.query.filter(Product.category.ilike(cat_slug)).count()
+    print(f"Products assigned: {products_count}")
     
     if products_count > 0 and not action:
         return jsonify({
@@ -1418,29 +1422,35 @@ def delete_category(name):
             'message': f'This category contains {products_count} products. Choose what to do with them.'
         }), 200
         
-    if products_count > 0:
-        if action == 'move':
-            if not move_to:
-                return jsonify({'error': 'Destination category is required to move products.'}), 400
-            dest_cat = Category.query.filter_by(slug=move_to).first() or Category.query.filter_by(name=move_to).first()
-            if not dest_cat:
-                return jsonify({'error': 'Destination category not found.'}), 404
+    try:
+        if products_count > 0:
+            if action == 'move':
+                if not move_to:
+                    return jsonify({'error': 'Destination category is required to move products.'}), 400
+                dest_cat = Category.query.filter_by(slug=move_to).first() or Category.query.filter_by(name=move_to).first()
+                if not dest_cat:
+                    return jsonify({'error': 'Destination category not found.'}), 404
+                    
+                dest_slug = dest_cat.slug or dest_cat.name.lower().replace(' ', '')
+                products = Product.query.filter(Product.category.ilike(cat_slug)).all()
+                for p in products:
+                    p.category = dest_slug
+                    p.subcat = 'all' # reset to default all
+                db.session.commit()
+            elif action == 'delete_products':
+                products = Product.query.filter(Product.category.ilike(cat_slug)).all()
+                for p in products:
+                    db.session.delete(p)
+                db.session.commit()
                 
-            dest_slug = dest_cat.slug or dest_cat.name.lower().replace(' ', '')
-            products = Product.query.filter(Product.category.ilike(cat_slug)).all()
-            for p in products:
-                p.category = dest_slug
-                p.subcat = 'all' # reset to default all
-            db.session.commit()
-        elif action == 'delete_products':
-            products = Product.query.filter(Product.category.ilike(cat_slug)).all()
-            for p in products:
-                db.session.delete(p)
-            db.session.commit()
-            
-    db.session.delete(cat)
-    db.session.commit()
-    return jsonify({'message': 'Category deleted successfully'}), 200
+        db.session.delete(cat)
+        db.session.commit()
+        print("Deletion successful")
+        return jsonify({'message': 'Category deleted successfully'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Deletion failed: {str(e)}")
+        return jsonify({'error': f'Deletion failed: {str(e)}'}), 500
 
 @admin_bp.route('/offers', methods=['GET'])
 def list_offers_admin():

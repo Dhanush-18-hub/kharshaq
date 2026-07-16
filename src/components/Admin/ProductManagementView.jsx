@@ -98,14 +98,18 @@ export default function ProductManagementView({ initialTab = 'products' }) {
   };
 
   const handleDeleteCategory = async (name) => {
+    console.log("Delete button clicked");
     try {
+      console.log("Sending DELETE request");
       const res = await api.delete(`/api/admin/categories/${name}`);
       if (res.data && res.data.requiresAction) {
         const count = res.data.productsCount;
         const confirmMsg = `Category "${name}" contains ${count} products.\n\nChoose how to handle products:\n- Click OK to delete the products along with the category.\n- Click Cancel to move the products to another category first.`;
         
         if (window.confirm(confirmMsg)) {
+          console.log("Sending DELETE request");
           await api.delete(`/api/admin/categories/${name}`, { data: { action: 'delete_products' } });
+          console.log("Deletion successful");
           toast.success(`Category "${name}" and all its products deleted.`);
         } else {
           const otherCats = categoriesList.filter(c => c.slug !== name && c.name !== name);
@@ -118,17 +122,22 @@ export default function ProductManagementView({ initialTab = 'products' }) {
           );
           if (!destCat) return;
           
+          console.log("Sending DELETE request");
           await api.delete(`/api/admin/categories/${name}`, { data: { action: 'move', moveTo: destCat } });
+          console.log("Deletion successful");
           toast.success(`Category products moved to "${destCat}". Category deleted.`);
         }
       } else {
+        console.log("Deletion successful");
         toast.success('Category deleted successfully.');
       }
       fetchCategoriesList();
       if (refetchGlobalCategories) refetchGlobalCategories();
     } catch (err) {
+      const reason = err.response?.data?.error || err.message || 'Failed to delete category';
+      console.log(`Deletion failed: ${reason}`);
       console.error('Failed to delete category:', err);
-      toast.error(err.response?.data?.error || 'Failed to delete category.');
+      toast.error(reason);
     }
   };
 
