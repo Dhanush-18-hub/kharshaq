@@ -1316,6 +1316,25 @@ def create_category():
     
     return jsonify({'message': 'Category created successfully', 'category': cat.to_json()}), 201
 
+@admin_bp.route('/categories-reorder', methods=['PUT'])
+def reorder_categories():
+    data = request.get_json() or {}
+    order_list = data.get('order', [])
+    if not order_list:
+        return jsonify({'error': 'Missing order list.'}), 400
+        
+    for index, ident in enumerate(order_list):
+        if isinstance(ident, int):
+            cat = Category.query.get(ident)
+        else:
+            cat = Category.query.filter_by(slug=ident).first() or Category.query.filter_by(name=ident).first()
+            
+        if cat:
+            cat.navbarOrder = index
+            
+    db.session.commit()
+    return jsonify({'message': 'Categories reordered successfully.'}), 200
+
 @admin_bp.route('/categories/<name>', methods=['PUT'])
 def update_category(name):
     cat = Category.query.filter_by(slug=name).first() or Category.query.filter_by(name=name).first() or Category.query.get(name)

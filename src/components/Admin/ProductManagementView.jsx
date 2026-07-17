@@ -14,7 +14,9 @@ import {
   Filter,
   ArrowUpDown,
   Sparkles,
-  Info
+  Info,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import AddProductModal from './AddProductModal';
@@ -54,6 +56,37 @@ export default function ProductManagementView({ initialTab = 'products' }) {
   const [newCatName, setNewCatName] = useState('');
   const [newCatImage, setNewCatImage] = useState('');
   const [submittingCategory, setSubmittingCategory] = useState(false);
+  const [reorderMode, setReorderMode] = useState(false);
+  const [savingOrder, setSavingOrder] = useState(false);
+
+  const handleMoveCategory = (index, direction) => {
+    if (direction === 'up' && index === 0) return;
+    if (direction === 'down' && index === categoriesList.length - 1) return;
+    const targetIdx = direction === 'up' ? index - 1 : index + 1;
+    const updated = [...categoriesList];
+    const temp = updated[index];
+    updated[index] = updated[targetIdx];
+    updated[targetIdx] = temp;
+    setCategoriesList(updated);
+  };
+
+  const handleSaveOrder = async () => {
+    try {
+      setSavingOrder(true);
+      const order = categoriesList.map(c => c.slug || c.name.toLowerCase());
+      await api.put('/api/admin/categories-reorder', { order });
+      toast.success('Categories order saved successfully!');
+      setReorderMode(false);
+      if (refetchGlobalCategories) {
+        await refetchGlobalCategories();
+      }
+    } catch (err) {
+      console.error('Failed to save categories order:', err);
+      toast.error('Failed to save categories order.');
+    } finally {
+      setSavingOrder(false);
+    }
+  };
 
   const fetchCategoriesList = async () => {
     try {
@@ -497,21 +530,50 @@ export default function ProductManagementView({ initialTab = 'products' }) {
         </>
       ) : (
         /* Categories Tab */
-        <div className="space-y-6">
+         <div className="space-y-6">
           <div className="flex justify-between items-center select-none">
             <div>
               <h3 className="font-extrabold text-sm text-gray-800 uppercase tracking-wider">Dynamic Categories CMS</h3>
               <p className="text-[11px] text-gray-400 font-semibold mt-0.5">Manage and customize your customer-facing category landing pages.</p>
             </div>
-            <button
-              onClick={() => {
-                setSelectedCategory(null);
-                setCategoryModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
-            >
-              <Plus className="w-4 h-4" /> Create Category Page
-            </button>
+            {reorderMode ? (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    fetchCategoriesList();
+                    setReorderMode(false);
+                  }}
+                  className="px-4 py-2.5 border border-gray-200 text-gray-500 hover:bg-gray-50 text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSaveOrder}
+                  disabled={savingOrder}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95 cursor-pointer disabled:opacity-50"
+                >
+                  {savingOrder ? 'Saving...' : 'Save Order'}
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setReorderMode(true)}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                >
+                  Reorder Categories
+                </button>
+                <button
+                  onClick={() => {
+                    setSelectedCategory(null);
+                    setCategoryModalOpen(true);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition active:scale-95 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" /> Create Category Page
+                </button>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -521,6 +583,11 @@ export default function ProductManagementView({ initialTab = 'products' }) {
               ))
             ) : categoriesList.map((cat, i) => (
               <div key={i} className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-emerald-500 transition group relative overflow-hidden">
+                {reorderMode && (
+                  <div className="absolute top-3 right-3 bg-emerald-50 text-emerald-700 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full z-20">
+                    Pos #{i + 1}
+                  </div>
+                )}
                 <div className="flex items-start gap-4">
                   <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center p-2 border border-gray-100 shrink-0">
                     <img
@@ -542,23 +609,48 @@ export default function ProductManagementView({ initialTab = 'products' }) {
                 </div>
 
                 <div className="flex justify-end gap-2 border-t border-gray-50 pt-4 mt-4 select-none">
-                  <button
-                    onClick={() => {
-                      setSelectedCategory(cat);
-                      setCategoryModalOpen(true);
-                    }}
-                    className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition cursor-pointer"
-                    title="Edit Category CMS"
-                  >
-                    <Edit3 className="w-3.5 h-3.5" /> Edit CMS
-                  </button>
-                  <button
-                    onClick={() => handleDeleteCategory(cat.slug || cat.name)}
-                    className="flex items-center justify-center p-1.5 text-gray-450 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition cursor-pointer"
-                    title="Delete Category"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
+                  {reorderMode ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={i === 0}
+                        onClick={() => handleMoveCategory(i, 'up')}
+                        className="flex items-center justify-center p-2 bg-gray-50 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-gray-50 text-gray-500 rounded-xl transition cursor-pointer"
+                        title="Move Up"
+                      >
+                        <ArrowUp className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        disabled={i === categoriesList.length - 1}
+                        onClick={() => handleMoveCategory(i, 'down')}
+                        className="flex items-center justify-center p-2 bg-gray-50 hover:bg-gray-100 disabled:opacity-30 disabled:hover:bg-gray-50 text-gray-500 rounded-xl transition cursor-pointer"
+                        title="Move Down"
+                      >
+                        <ArrowDown className="w-4 h-4" />
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={() => {
+                          setSelectedCategory(cat);
+                          setCategoryModalOpen(true);
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 text-xs font-bold rounded-xl transition cursor-pointer"
+                        title="Edit Category CMS"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" /> Edit CMS
+                      </button>
+                      <button
+                        onClick={() => handleDeleteCategory(cat.slug || cat.name)}
+                        className="flex items-center justify-center p-1.5 text-gray-450 hover:text-rose-500 hover:bg-rose-50 rounded-xl transition cursor-pointer"
+                        title="Delete Category"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
             ))}
