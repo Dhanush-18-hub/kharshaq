@@ -1511,3 +1511,25 @@ def send_broadcast_notification():
     db.session.commit()
     
     return jsonify({'message': 'Broadcast sent successfully', 'notification': notif.to_json()}), 201
+
+@admin_bp.route('/products/<id>/collections', methods=['PUT'])
+def update_product_collections(id):
+    product = Product.query.get(id)
+    if not product:
+        return jsonify({'error': 'Product not found.'}), 404
+        
+    data = request.get_json() or {}
+    if 'featured' in data:
+        product.featured = bool(data['featured'])
+    if 'bestSeller' in data:
+        product.best_seller = bool(data['bestSeller'])
+    if 'trending' in data:
+        product.trending = bool(data['trending'])
+    if 'newArrival' in data:
+        product.new_arrival = bool(data['newArrival'])
+        
+    db.session.commit()
+    return jsonify({
+        'message': 'Product collections updated successfully',
+        'product': product.to_json()
+    }), 200
