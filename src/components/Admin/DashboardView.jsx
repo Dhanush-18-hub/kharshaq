@@ -17,11 +17,19 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-export default function DashboardView({ stats, loadingStats, setActiveTab, refreshStats }) {
+export default function DashboardView({ 
+  stats, 
+  loadingStats, 
+  setActiveTab, 
+  refreshStats,
+  activeFilter = 'this-week',
+  setActiveFilter,
+  startDate = '',
+  setStartDate,
+  endDate = '',
+  setEndDate
+}) {
   const [selectedPoint, setSelectedPoint] = useState(null);
-  const [activeFilter, setActiveFilter] = useState('this-week');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -30,19 +38,12 @@ export default function DashboardView({ stats, loadingStats, setActiveTab, refre
     return 'Good Evening';
   };
 
-  // Trigger data refetch when activeFilter changes
-  React.useEffect(() => {
-    if (activeFilter !== 'custom') {
-      refreshStats(activeFilter);
-    }
-  }, [activeFilter]);
-
   const handleApplyCustom = () => {
     if (!startDate || !endDate) {
       toast.error('Please select both start and end dates.');
       return;
     }
-    refreshStats('custom', startDate, endDate);
+    setActiveFilter('custom', startDate, endDate);
   };
 
   // Convert numbers to Indian format (e.g. ₹2,45,680)

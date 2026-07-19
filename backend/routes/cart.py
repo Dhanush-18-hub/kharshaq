@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
-from models import db, User, Product
+from models import db, User, Product, Coupon, CouponUsage
+from datetime import datetime
 
 cart_bp = Blueprint('cart', __name__)
 
@@ -21,27 +22,20 @@ def sync_cart():
     if data.get('overwrite_cart', False):
         user.cart = guest_cart
     else:
-        # db_cart is stored as a list of dicts. We want to convert guest_cart and db_cart into key-value structures
         merged_cart = {}
-        
-        # Load existing cart items
         db_cart = user.cart or []
         for item in db_cart:
             item_id = item.get('id')
             if item_id:
                 merged_cart[item_id] = item
-                
-        # Merge guest cart items
         for item in guest_cart:
             item_id = item.get('id')
             if not item_id:
                 continue
             if item_id in merged_cart:
-                # Add quantities up
                 merged_cart[item_id]['quantity'] = merged_cart[item_id].get('quantity', 0) + item.get('quantity', 1)
             else:
                 merged_cart[item_id] = item
-                
         user.cart = list(merged_cart.values())
     
     # 2. Merge Wishlist Items (keep unique IDs)
@@ -59,7 +53,6 @@ def sync_cart():
         
     orders = data.get('orders')
     if orders is not None:
-        # Stock management: identify newly added orders in this sync request
         existing_order_ids = {str(o.get('id', '')).strip() for o in (user.orders or []) if o.get('id')}
         new_orders = [o for o in orders if str(o.get('id', '')).strip() not in existing_order_ids]
         
@@ -71,6 +64,23 @@ def sync_cart():
                     prod = Product.query.get(pid)
                     if prod:
                         prod.stock = max(0, prod.stock - qty)
+            
+            # Log coupon usage in database
+            coupon_code = new_o.get('couponCode') or new_o.get('coupon')
+            if coupon_code:
+                coupon = Coupon.query.filter_by(code=str(coupon_code).strip().upper()).first()
+                if coupon:
+                    coupon.usage_count += 1
+                    usage = CouponUsage(
+                        coupon_id=coupon.id,
+                        user_id=user.id,
+                        device_id=new_o.get('deviceId') or data.get('deviceId'),
+                        phone_number=user.phone,
+                        email=user.email,
+                        order_id=str(new_o.get('id')),
+                        used_at=datetime.utcnow()
+                    )
+                    db.session.add(usage)
                         
         user.orders = orders
         

@@ -15,6 +15,7 @@ from routes.cart import cart_bp
 from routes.admin import admin_bp
 from routes.products import products_bp
 from routes.cms import cms_bp
+from routes.coupons import coupons_bp
 from flask_bcrypt import Bcrypt
 
 def create_app():
@@ -59,6 +60,7 @@ def create_app():
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(products_bp, url_prefix='/api')
     app.register_blueprint(cms_bp, url_prefix='/api')
+    app.register_blueprint(coupons_bp, url_prefix='/api/coupons')
     
     # Create DB tables and seed data
     with app.app_context():

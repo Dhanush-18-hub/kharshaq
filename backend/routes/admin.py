@@ -1,6 +1,6 @@
 from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt
-from models import db, User, Product, Category, Offer, SubCategory, BroadcastNotification, FinancialExpense, GSTConfig
+from models import db, User, Product, Category, Offer, SubCategory, BroadcastNotification, FinancialExpense, GSTConfig, Coupon, CouponUsage
 from datetime import datetime, timedelta
 import random
 
@@ -1210,47 +1210,173 @@ def toggle_customer_status(id):
     return jsonify({'message': f'Customer account status set to {new_status}', 'status': new_status}), 200
 
 # --- COUPONS ENDPOINTS ---
-# Mock coupon store (since we don't have coupon model, we can store inside system or mock)
-coupons_db = [
-    {'code': 'WELCOME50', 'discount': '₹50 OFF', 'minPurchase': '₹300', 'type': 'Fixed', 'value': 50},
-    {'code': 'FREESHIP', 'discount': 'Free Delivery', 'minPurchase': '₹499', 'type': 'Free Shipping', 'value': 40},
-    {'code': 'FESTIVE10', 'discount': '10% OFF', 'minPurchase': '₹1000', 'type': 'Percentage', 'value': 10}
-]
-
 @admin_bp.route('/coupons', methods=['GET'])
 def list_coupons():
-    return jsonify({'coupons': coupons_db}), 200
+    coupons = Coupon.query.all()
+    res = []
+    for c in coupons:
+        c_dict = c.to_json()
+        c_dict['minPurchase'] = f"₹{int(c.minimum_order)}"
+        c_dict['discount'] = c.description or f"₹{int(c.discount_value)} OFF"
+        c_dict['value'] = c.discount_value
+        c_dict['type'] = c.discount_type.capitalize()
+        res.append(c_dict)
+    return jsonify({'coupons': res}), 200
 
 @admin_bp.route('/coupons', methods=['POST'])
 def add_coupon():
     data = request.get_json() or {}
     code = data.get('code', '').strip().upper()
     discount = data.get('discount', '').strip()
-    value = int(data.get('value', 10))
+    value = float(data.get('value', 10.0))
+    min_purchase = data.get('minPurchase', '₹300')
     
+    min_val = 300.0
+    if isinstance(min_purchase, str):
+        digits = ''.join(filter(str.isdigit, min_purchase))
+        if digits:
+            min_val = float(digits)
+    else:
+        min_val = float(min_purchase or 300.0)
+
     if not code or not discount:
         return jsonify({'error': 'Code and Discount description are required.'}), 400
         
-    if any(c['code'] == code for c in coupons_db):
+    if Coupon.query.filter_by(code=code).first():
         return jsonify({'error': 'Coupon code already exists.'}), 400
         
-    new_coupon = {
-        'code': code,
-        'discount': discount,
-        'minPurchase': data.get('minPurchase', '₹300'),
-        'type': data.get('type', 'Percentage'),
-        'value': value
-    }
-    coupons_db.append(new_coupon)
-    return jsonify({'message': 'Coupon created successfully', 'coupon': new_coupon}), 201
+    c_type = data.get('type', 'Percentage').lower()
+    if 'percentage' in c_type:
+        discount_type = 'percentage'
+    elif 'fixed' in c_type:
+        discount_type = 'fixed'
+    else:
+        discount_type = 'free_delivery'
 
-@admin_bp.route('/coupons/<code>', methods=['DELETE'])
-def delete_coupon(code):
-    global coupons_db
-    code = code.upper()
-    if not any(c['code'] == code for c in coupons_db):
+    new_coupon = Coupon(
+        code=code,
+        description=discount,
+        discount_type=discount_type,
+        discount_value=value,
+        minimum_order=min_val,
+        maximum_discount=float(data.get('maximum_discount', 1000.0)) if data.get('maximum_discount') else None,
+        usage_limit_global=int(data.get('usage_limit_global')) if data.get('usage_limit_global') else None,
+        usage_limit_per_user=int(data.get('usage_limit_per_user', 1)) if data.get('usage_limit_per_user') else None,
+        is_welcome_coupon=bool(data.get('is_welcome_coupon', False)),
+        device_restricted=bool(data.get('device_restricted', False)),
+        phone_verification_required=bool(data.get('phone_verification_required', False)),
+        applicable_categories=data.get('applicable_categories', []),
+        applicable_products=data.get('applicable_products', []),
+        is_active=bool(data.get('is_active', True))
+    )
+    
+    if data.get('start_date'):
+        new_coupon.start_date = datetime.fromisoformat(data['start_date'].replace('Z', ''))
+    if data.get('end_date'):
+        new_coupon.end_date = datetime.fromisoformat(data['end_date'].replace('Z', ''))
+
+    db.session.add(new_coupon)
+    db.session.commit()
+    
+    ret_dict = new_coupon.to_json()
+    ret_dict['minPurchase'] = f"₹{int(new_coupon.minimum_order)}"
+    ret_dict['discount'] = new_coupon.description
+    ret_dict['value'] = new_coupon.discount_value
+    ret_dict['type'] = new_coupon.discount_type.capitalize()
+    
+    return jsonify({'message': 'Coupon created successfully', 'coupon': ret_dict}), 201
+
+@admin_bp.route('/coupons/<int:coupon_id>', methods=['PUT'])
+@admin_bp.route('/coupons/<code>', methods=['PUT'])
+def update_coupon(coupon_id=None, code=None):
+    coupon = None
+    if coupon_id:
+        coupon = Coupon.query.get(coupon_id)
+    elif code:
+        coupon = Coupon.query.filter_by(code=code.upper()).first()
+        
+    if not coupon:
         return jsonify({'error': 'Coupon not found.'}), 404
-    coupons_db = [c for c in coupons_db if c['code'] != code]
+        
+    data = request.get_json() or {}
+    
+    if 'code' in data:
+        new_code = data['code'].strip().upper()
+        existing = Coupon.query.filter_by(code=new_code).first()
+        if existing and existing.id != coupon.id:
+            return jsonify({'error': 'Coupon code already exists.'}), 400
+        coupon.code = new_code
+        
+    if 'discount' in data:
+        coupon.description = data['discount'].strip()
+    if 'value' in data:
+        coupon.discount_value = float(data['value'])
+    if 'minPurchase' in data:
+        min_p = data['minPurchase']
+        if isinstance(min_p, str):
+            digits = ''.join(filter(str.isdigit, min_p))
+            if digits:
+                coupon.minimum_order = float(digits)
+        else:
+            coupon.minimum_order = float(min_p or 0.0)
+            
+    if 'type' in data:
+        c_type = data['type'].lower()
+        if 'percentage' in c_type:
+            coupon.discount_type = 'percentage'
+        elif 'fixed' in c_type:
+            coupon.discount_type = 'fixed'
+        else:
+            coupon.discount_type = 'free_delivery'
+            
+    if 'maximum_discount' in data:
+        coupon.maximum_discount = float(data['maximum_discount']) if data['maximum_discount'] else None
+    if 'usage_limit_global' in data:
+        coupon.usage_limit_global = int(data['usage_limit_global']) if data['usage_limit_global'] else None
+    if 'usage_limit_per_user' in data:
+        coupon.usage_limit_per_user = int(data['usage_limit_per_user']) if data['usage_limit_per_user'] else None
+    if 'is_welcome_coupon' in data:
+        coupon.is_welcome_coupon = bool(data['is_welcome_coupon'])
+    if 'device_restricted' in data:
+        coupon.device_restricted = bool(data['device_restricted'])
+    if 'phone_verification_required' in data:
+        coupon.phone_verification_required = bool(data['phone_verification_required'])
+    if 'applicable_categories' in data:
+        coupon.applicable_categories = data['applicable_categories']
+    if 'applicable_products' in data:
+        coupon.applicable_products = data['applicable_products']
+    if 'is_active' in data:
+        coupon.is_active = bool(data['is_active'])
+        
+    if data.get('start_date'):
+        coupon.start_date = datetime.fromisoformat(data['start_date'].replace('Z', ''))
+    if data.get('end_date'):
+        coupon.end_date = datetime.fromisoformat(data['end_date'].replace('Z', ''))
+        
+    db.session.commit()
+    
+    ret_dict = coupon.to_json()
+    ret_dict['minPurchase'] = f"₹{int(coupon.minimum_order)}"
+    ret_dict['discount'] = coupon.description
+    ret_dict['value'] = coupon.discount_value
+    ret_dict['type'] = coupon.discount_type.capitalize()
+    
+    return jsonify({'message': 'Coupon updated successfully', 'coupon': ret_dict}), 200
+
+@admin_bp.route('/coupons/<int:coupon_id>', methods=['DELETE'])
+@admin_bp.route('/coupons/<code>', methods=['DELETE'])
+def delete_coupon(coupon_id=None, code=None):
+    coupon = None
+    if coupon_id:
+        coupon = Coupon.query.get(coupon_id)
+    elif code:
+        coupon = Coupon.query.filter_by(code=code.upper()).first()
+        
+    if not coupon:
+        return jsonify({'error': 'Coupon not found.'}), 404
+        
+    db.session.delete(coupon)
+    db.session.commit()
     return jsonify({'message': 'Coupon deleted successfully'}), 200
 
 # --- CATEGORY & OFFERS ADMIN ENDPOINTS ---

@@ -30,6 +30,7 @@ import HelpSupport from './components/HelpSupport';
 import Notifications from './components/Notifications';
 import Checkout from './components/Checkout';
 import MyOrders from './components/MyOrders';
+import MyCoupons from './components/MyCoupons';
 import { Toaster, toast } from 'react-hot-toast';
 import AdminRoute from './components/AdminRoute';
 import AdminDashboard from './components/Admin/AdminDashboard';
@@ -66,6 +67,9 @@ function AppContent({
   setNotifications
 }) {
   const [selectedProductId, setSelectedProductId] = useState(null);
+  const [appliedCoupon, setAppliedCoupon] = useState(null);
+  const [couponDiscount, setCouponDiscount] = useState(0.0);
+  const [freeDeliveryFromCoupon, setFreeDeliveryFromCoupon] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, token, syncCartItems, categories, refreshUserProfile, homepageData } = useAuth();
@@ -588,6 +592,12 @@ function AppContent({
               updateQuantity={updateQuantity} 
               getItemQuantity={getItemQuantity}
               setActiveTab={handleSetActiveTab} 
+              appliedCoupon={appliedCoupon}
+              setAppliedCoupon={setAppliedCoupon}
+              couponDiscount={couponDiscount}
+              setCouponDiscount={setCouponDiscount}
+              freeDeliveryFromCoupon={freeDeliveryFromCoupon}
+              setFreeDeliveryFromCoupon={setFreeDeliveryFromCoupon}
             />
           } />
 
@@ -600,6 +610,12 @@ function AppContent({
               <ProfileSettings />
             </ProtectedRoute>
           } />
+
+          <Route path="/my-coupons" element={
+            <ProtectedRoute>
+              <MyCoupons />
+            </ProtectedRoute>
+          } />
           
           <Route path="/checkout" element={
             <ProtectedRoute>
@@ -609,6 +625,12 @@ function AppContent({
                 removeFromCart={removeFromCart} 
                 addresses={addresses}
                 setAddresses={setAddresses}
+                appliedCoupon={appliedCoupon}
+                setAppliedCoupon={setAppliedCoupon}
+                couponDiscount={couponDiscount}
+                setCouponDiscount={setCouponDiscount}
+                freeDeliveryFromCoupon={freeDeliveryFromCoupon}
+                setFreeDeliveryFromCoupon={setFreeDeliveryFromCoupon}
               />
             </ProtectedRoute>
           } />

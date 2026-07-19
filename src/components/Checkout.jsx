@@ -5,8 +5,21 @@ import {
   ArrowLeft, ShoppingBag, Leaf, MapPin, CreditCard, CheckCircle2, ShieldCheck, Plus, Minus, Info, X
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import { getOrCreateDeviceId } from '../utils/fingerprint';
 
-export default function Checkout({ cartItems, updateQuantity, removeFromCart, addresses, setAddresses }) {
+export default function Checkout({ 
+  cartItems = [], 
+  updateQuantity = () => {}, 
+  removeFromCart = () => {}, 
+  addresses = [], 
+  setAddresses = () => {},
+  appliedCoupon = null,
+  setAppliedCoupon = () => {},
+  couponDiscount = 0.0,
+  setCouponDiscount = () => {},
+  freeDeliveryFromCoupon = false,
+  setFreeDeliveryFromCoupon = () => {}
+}) {
   const { user, placeOrder } = useAuth();
   const navigate = useNavigate();
   
@@ -92,9 +105,8 @@ export default function Checkout({ cartItems, updateQuantity, removeFromCart, ad
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
 
-  // Apply default 16.3% discount matching Cart behavior
-  const discount = Math.round(subtotal * 0.1632);
-  const isFreeDelivery = subtotal >= 499;
+  const discount = couponDiscount || 0.0;
+  const isFreeDelivery = (subtotal >= 499 || freeDeliveryFromCoupon);
   const deliveryCharge = isFreeDelivery ? 0 : 40;
   const finalTotal = Math.max(0, subtotal - discount + deliveryCharge);
 
@@ -130,6 +142,9 @@ export default function Checkout({ cartItems, updateQuantity, removeFromCart, ad
       })),
       total: finalTotal,
       itemsCount: totalItemCount,
+      coupon: appliedCoupon,
+      couponCode: appliedCoupon,
+      deviceId: getOrCreateDeviceId(),
       deliveryPartner: 'Blinkit Express',
       expectedDelivery: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
     };
@@ -137,6 +152,10 @@ export default function Checkout({ cartItems, updateQuantity, removeFromCart, ad
     try {
       await placeOrder(newOrder);
       toast.success(`Order placed successfully! Reference #${orderId}`);
+      // Clear coupon state globally
+      setAppliedCoupon(null);
+      setCouponDiscount(0.0);
+      setFreeDeliveryFromCoupon(false);
       navigate('/orders');
     } catch (err) {
       toast.error('Failed to place order. Please try again.');

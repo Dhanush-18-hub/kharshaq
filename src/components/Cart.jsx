@@ -1,6 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useAuth, api } from '../context/AuthContext';
+import CouponSelectionModal from './CouponSelectionModal';
+import { getOrCreateDeviceId } from '../utils/fingerprint';
+import { toast } from 'react-hot-toast';
 import { 
   Plus, 
   Minus, 
@@ -16,16 +20,142 @@ import {
 } from 'lucide-react';
 
 export default function Cart({ 
-  cartItems, 
-  addToCart, 
-  removeFromCart, 
-  updateQuantity, 
-  getItemQuantity,
-  setActiveTab 
+  cartItems = [], 
+  addToCart = () => {}, 
+  removeFromCart = () => {}, 
+  updateQuantity = () => {}, 
+  getItemQuantity = () => {},
+  setActiveTab = () => {},
+  appliedCoupon = null,
+  setAppliedCoupon = () => {},
+  couponDiscount = 0.0,
+  setCouponDiscount = () => {},
+  freeDeliveryFromCoupon = false,
+  setFreeDeliveryFromCoupon = () => {}
 }) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [couponCode, setCouponCode] = useState('');
-  const [appliedCoupon, setAppliedCoupon] = useState('WELCOME20'); // pre-applied for mockup matching
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [applicableCoupons, setApplicableCoupons] = useState([]);
+  const [notApplicableCoupons, setNotApplicableCoupons] = useState([]);
+  const [availableCount, setAvailableCount] = useState(0);
+
+  const loadCoupons = useCallback(async () => {
+    try {
+      const devId = getOrCreateDeviceId();
+      const listRes = await api.get('/api/coupons');
+      if (listRes.data && listRes.data.coupons) {
+        const now = new Date();
+        const active = listRes.data.coupons.filter(c => !c.used && (!c.end_date || new Date(c.end_date) >= now));
+        setAvailableCount(active.length);
+      }
+      
+      const subtotalVal = cartItems.reduce((sum, item) => sum + (parseFloat(item.price || 0.0) * parseInt(item.quantity || 1)), 0);
+      const appRes = await api.post('/api/coupons/applicable', {
+        subtotal: subtotalVal,
+        cartItems: cartItems,
+        deviceId: devId,
+        phoneNumber: user?.phone || '',
+        email: user?.email || ''
+      });
+      if (appRes.data) {
+        setApplicableCoupons(appRes.data.applicable || []);
+        setNotApplicableCoupons(appRes.data.not_applicable || []);
+      }
+    } catch (err) {
+      console.error('Failed to pre-fetch coupons in Cart:', err);
+    }
+  }, [cartItems, user]);
+
+  useEffect(() => {
+    loadCoupons();
+  }, [loadCoupons]);
+
+  const applyCoupon = async (codeToApply = couponCode) => {
+    const cleanCode = (codeToApply || '').trim().toUpperCase();
+    if (!cleanCode) {
+      toast.error('Please enter a coupon code.');
+      return;
+    }
+    const devId = getOrCreateDeviceId();
+    const subtotalVal = cartItems.reduce((sum, item) => sum + (parseFloat(item.price || 0.0) * parseInt(item.quantity || 1)), 0);
+    try {
+      const res = await api.post('/api/coupons/validate', {
+        code: cleanCode,
+        subtotal: subtotalVal,
+        cartItems: cartItems,
+        deviceId: devId,
+        phoneNumber: user?.phone || '',
+        email: user?.email || ''
+      });
+      if (res.data && res.data.success) {
+        setAppliedCoupon(cleanCode);
+        setCouponDiscount(res.data.discount_amount);
+        setFreeDeliveryFromCoupon(res.data.free_delivery);
+        setCouponCode('');
+        toast.success(res.data.message || `Coupon ${cleanCode} applied!`);
+      } else {
+        toast.error(res.data.message || 'This coupon code is not valid or eligible.');
+      }
+    } catch (err) {
+      console.error('Failed to apply coupon:', err);
+      toast.error('Invalid coupon code.');
+    }
+  };
+
+  useEffect(() => {
+    if (cartItems.length === 0) {
+      setAppliedCoupon(null);
+      setCouponDiscount(0.0);
+      setFreeDeliveryFromCoupon(false);
+      return;
+    }
+    const autoApply = async () => {
+      const devId = getOrCreateDeviceId();
+      const subtotalVal = cartItems.reduce((sum, item) => sum + (parseFloat(item.price || 0.0) * parseInt(item.quantity || 1)), 0);
+      try {
+        const res = await api.post('/api/coupons/applicable', {
+          subtotal: subtotalVal,
+          cartItems: cartItems,
+          deviceId: devId,
+          phoneNumber: user?.phone || '',
+          email: user?.email || ''
+        });
+        if (res.data && res.data.applicable && res.data.applicable.length > 0) {
+          let best = res.data.applicable[0];
+          for (const c of res.data.applicable) {
+            if (c.calculated_discount > best.calculated_discount) {
+              best = c;
+            }
+          }
+          if (best && (!appliedCoupon || best.calculated_discount > couponDiscount)) {
+            setAppliedCoupon(best.code);
+            setCouponDiscount(best.calculated_discount);
+            setFreeDeliveryFromCoupon(best.free_delivery);
+            toast.success(`Auto-applied best coupon: ${best.code} (Saved ₹${best.calculated_discount})`);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to auto-apply best coupon:', err);
+      }
+    };
+    
+    const pendingCode = sessionStorage.getItem('karshaq_pending_coupon');
+    if (pendingCode) {
+      sessionStorage.removeItem('karshaq_pending_coupon');
+      applyCoupon(pendingCode);
+    } else {
+      autoApply();
+    }
+  }, [cartItems, user]);
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponDiscount(0.0);
+    setFreeDeliveryFromCoupon(false);
+    toast.success('Coupon removed.');
+  };
 
   // Recommended products list ("You may also like")
   const recommendedProducts = [
@@ -82,32 +212,13 @@ export default function Cart({
   // Cart Calculations
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   const totalItemCount = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-
-  // Match the screenshot: subtotal 772, discount 126
-  // We can calculate discount dynamically. Let's make it 16.3% if WELCOME20 or default is applied
-  let discount = 0;
-  if (appliedCoupon === 'WELCOME20') {
-    discount = Math.round(subtotal * 0.1632); // gives exactly 126 for 772 subtotal
-  }
-
   const deliveryThreshold = 499;
-  const isFreeDelivery = subtotal >= deliveryThreshold;
+
+  const discount = couponDiscount || 0.0;
+  const isFreeDelivery = (subtotal >= deliveryThreshold || freeDeliveryFromCoupon);
   const deliveryCharge = isFreeDelivery ? 0 : 40;
   const deliverySavings = isFreeDelivery ? 40 : 0;
   const finalTotal = Math.max(0, subtotal - discount + deliveryCharge);
-
-  const applyCoupon = () => {
-    if (couponCode.toUpperCase() === 'WELCOME20') {
-      setAppliedCoupon('WELCOME20');
-      setCouponCode('');
-    } else {
-      alert('Invalid Coupon Code');
-    }
-  };
-
-  const removeCoupon = () => {
-    setAppliedCoupon('');
-  };
 
   return (
     <div className="w-full bg-[#FCFDF9]/80 min-h-screen pt-[130px] pb-16 overflow-hidden">
@@ -320,7 +431,9 @@ export default function Cart({
 
                   <div className="flex justify-between">
                     <span className="text-gray-400 font-bold">Delivery Charges</span>
-                    <span className="text-gray-800 font-black">₹{deliveryCharge > 0 ? deliveryCharge : '40'}</span>
+                    <span className={deliveryCharge > 0 ? "text-gray-800 font-black" : "text-primary-green font-black"}>
+                      {deliveryCharge > 0 ? `₹${deliveryCharge}` : 'FREE'}
+                    </span>
                   </div>
                 </div>
 
@@ -363,15 +476,22 @@ export default function Cart({
 
               {/* Promo Coupon applying Card */}
               <div className="bg-white rounded-3xl border border-border-color p-6 shadow-card text-left select-none relative overflow-hidden">
-                <span className="text-[10px] font-black tracking-widest text-[#E65100] bg-orange-50 border border-orange-100 px-3 py-1 rounded-full uppercase mb-4 inline-block">
-                  USE CODE: WELCOME20
-                </span>
+                <div className="flex justify-between items-center mb-4">
+                  <span className="text-[10px] font-black tracking-widest text-[#E65100] bg-orange-50 border border-orange-100 px-3 py-1 rounded-full uppercase">
+                    PROMO CODE
+                  </span>
+                  {availableCount > 0 && (
+                    <span className="text-[11px] font-black text-primary-green bg-light-green/45 px-2 py-0.5 rounded-md">
+                      ✨ {availableCount} offer{availableCount > 1 ? 's' : ''} available
+                    </span>
+                  )}
+                </div>
 
                 <h4 className="text-[16px] font-black text-gray-800 leading-tight mb-1">
-                  Get 20% OFF on your first order
+                  Apply Coupons & Save More
                 </h4>
                 <p className="text-gray-400 text-[12px] font-semibold mb-4 leading-normal">
-                  Save up to ₹100 on this order
+                  Tap below to see all active coupon codes
                 </p>
 
                 {/* Coupon Application input */}
@@ -384,7 +504,7 @@ export default function Cart({
                     className="flex-1 px-4 py-2.5 border border-border-color rounded-xl text-[14px] font-semibold text-gray-700 bg-gray-50 focus:outline-none focus:border-primary-green focus:ring-1 focus:ring-primary-green"
                   />
                   <button 
-                    onClick={applyCoupon}
+                    onClick={() => applyCoupon(couponCode)}
                     className="px-4 py-2.5 bg-primary-green hover:bg-dark-green text-white font-bold text-[13px] rounded-xl transition-colors cursor-pointer"
                   >
                     Apply
@@ -392,9 +512,9 @@ export default function Cart({
                 </div>
 
                 {appliedCoupon && (
-                  <div className="flex items-center justify-between bg-emerald-50 rounded-lg p-2 mt-2">
+                  <div className="flex items-center justify-between bg-emerald-50 rounded-lg p-2.5 mt-2">
                     <span className="text-[12px] font-black text-primary-green uppercase tracking-wide">
-                      {appliedCoupon} Applied!
+                      {appliedCoupon} Applied! (Saved ₹{discount})
                     </span>
                     <button 
                       onClick={removeCoupon} 
@@ -404,6 +524,13 @@ export default function Cart({
                     </button>
                   </div>
                 )}
+
+                <button 
+                  onClick={() => setIsModalOpen(true)}
+                  className="mt-3 text-[13.5px] font-black text-primary-green hover:text-dark-green transition-colors cursor-pointer block"
+                >
+                  View All Available Coupons →
+                </button>
 
                 {/* Veg basket image overlapping */}
                 <div className="absolute right-[-20px] bottom-[-20px] w-[130px] opacity-15 pointer-events-none">
@@ -610,6 +737,16 @@ export default function Cart({
           </div>
         </div>
       </section>
+
+      {/* Coupon Selection Modal */}
+      <CouponSelectionModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        applicableCoupons={applicableCoupons}
+        notApplicableCoupons={notApplicableCoupons}
+        onApplyCoupon={(code) => applyCoupon(code)}
+        activeCouponCode={appliedCoupon}
+      />
 
     </div>
   );

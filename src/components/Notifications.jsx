@@ -8,6 +8,7 @@ import {
   User, Bell, Trash2, Settings, Gift, Briefcase, Tag, AlertCircle, RefreshCw
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
+import ProfileSidebar from './ProfileSidebar';
 
 export default function Notifications({ notifications, setNotifications }) {
   const { user, logout, rewardPoints } = useAuth();
@@ -119,146 +120,7 @@ export default function Notifications({ notifications, setNotifications }) {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
           
           {/* ================= COLUMN 1: LEFT SIDEBAR ================= */}
-          <div className="lg:col-span-3 flex flex-col gap-6 select-none">
-            {/* User Profile Card */}
-            <div className="bg-white border border-border-color rounded-3xl p-6 shadow-premium text-left flex items-center gap-4">
-              <div className="w-14 h-14 rounded-full bg-light-green border border-emerald-100 flex items-center justify-center text-primary-green shrink-0 overflow-hidden">
-                {user?.profile_image ? (
-                  <img src={user.profile_image} alt={user.name} className="w-full h-full object-cover" />
-                ) : (
-                  <User className="w-6 h-6 text-primary-green" />
-                )}
-              </div>
-              <div className="overflow-hidden">
-                <h3 className="text-[16px] font-black text-gray-800 leading-tight truncate">{user?.name || 'Dhanush Kumar'}</h3>
-                <p className="text-[11px] text-gray-400 font-bold leading-tight truncate mt-1">{user?.email || 'koppladk4@gmail.com'}</p>
-                {user?.membership_level === 'Plus' || user?.membership_level === 'Karshaq Plus' ? (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-primary-green bg-light-green border border-emerald-50 px-2.5 py-0.5 rounded-full mt-2.5">
-                    Karshaq Plus 👑
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-extrabold text-gray-500 bg-gray-50 border border-gray-200 px-2.5 py-0.5 rounded-full mt-2.5">
-                    Standard Member
-                  </span>
-                )}
-              </div>
-            </div>
-
-            {/* Sidebar Navigation */}
-            <div className="bg-white border border-border-color rounded-3xl py-4 px-3 shadow-premium text-left flex flex-col gap-1">
-              <button 
-                onClick={() => navigate('/profile')} 
-                className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl hover:bg-light-green/30 text-[14.5px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer transition-colors"
-              >
-                <User className="w-4.5 h-4.5 text-gray-400" />
-                <span>My Profile</span>
-              </button>
-
-              <button 
-                onClick={() => navigate('/orders')} 
-                className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl hover:bg-light-green/30 text-[14.5px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer transition-colors"
-              >
-                <ShoppingBag className="w-4.5 h-4.5 text-gray-400" />
-                <span>My Orders</span>
-              </button>
-
-              <button 
-                onClick={() => navigate('/wishlist')} 
-                className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl hover:bg-light-green/30 text-[14.5px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer transition-colors"
-              >
-                <Heart className="w-4.5 h-4.5 text-gray-400" />
-                <span>My Wishlist</span>
-              </button>
-
-              <button 
-                onClick={() => navigate('/addresses')} 
-                className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl hover:bg-light-green/30 text-[14.5px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer transition-colors"
-              >
-                <MapPin className="w-4.5 h-4.5 text-gray-400" />
-                <span>My Addresses</span>
-              </button>
-
-              <button 
-                onClick={() => navigate('/payments')} 
-                className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl hover:bg-light-green/30 text-[14.5px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer transition-colors"
-              >
-                <CreditCard className="w-4.5 h-4.5 text-gray-400" />
-                <span>Payment Methods</span>
-              </button>
-
-              <button 
-                onClick={() => navigate('/rewards')}
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-light-green/30 text-[14.5px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer transition-colors group"
-              >
-                <div className="flex items-center gap-3.5">
-                  <Star className="w-4.5 h-4.5 text-gray-400 group-hover:text-primary-green" />
-                  <span>My Rewards</span>
-                </div>
-                <span className="bg-primary-green text-white text-[11px] font-extrabold px-2 py-0.5 rounded-full">
-                  {rewardPoints !== undefined ? rewardPoints.toLocaleString() : 0}
-                </span>
-              </button>
-
-              <button 
-                onClick={() => navigate('/notifications')} 
-                className="w-full flex items-center justify-between px-4 py-3 rounded-xl bg-light-green text-primary-green text-[14.5px] font-extrabold cursor-pointer transition-colors"
-              >
-                <div className="flex items-center gap-3.5">
-                  <Bell className="w-4.5 h-4.5 fill-primary-green text-primary-green" />
-                  <span>Notifications</span>
-                </div>
-                {unreadCount > 0 && (
-                  <span className="bg-[#D81B60] text-white text-[11px] font-extrabold px-2.5 py-0.5 rounded-full">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
-
-              <button 
-                onClick={() => navigate('/help')} 
-                className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl hover:bg-light-green/30 text-[14.5px] font-bold text-gray-500 hover:text-gray-700 cursor-pointer transition-colors"
-              >
-                <HelpCircle className="w-4.5 h-4.5 text-gray-400" />
-                <span>Help & Support</span>
-              </button>
-
-              <div className="h-[1px] bg-gray-100 my-2 mx-4" />
-
-              <button 
-                onClick={() => {
-                  logout();
-                  navigate('/');
-                }}
-                className="w-full flex items-center gap-3.5 px-4 py-3 rounded-xl hover:bg-red-50 text-[14.5px] font-black text-red-500 cursor-pointer transition-colors"
-              >
-                <LogOut className="w-4.5 h-4.5 text-red-500" />
-                <span>Logout</span>
-              </button>
-            </div>
-
-            {/* Karshaq Plus Promo Card */}
-            <div className="bg-gradient-to-br from-[#EAF2E4] to-[#DBEAD1] border border-border-color rounded-3xl p-6 shadow-premium text-left relative overflow-hidden">
-              <span className="text-[17px] block font-black text-gray-800 leading-tight">Karshaq Plus 👑</span>
-              <p className="text-[12px] text-gray-500 font-bold mt-2 leading-relaxed">
-                Unlock more rewards, exclusive offers and faster deliveries!
-              </p>
-              <ul className="mt-4 flex flex-col gap-1.5 text-[11px] text-gray-600 font-bold">
-                <li className="flex items-center gap-1.5">• Earn 2x Reward Points</li>
-                <li className="flex items-center gap-1.5">• Birthday & Anniversary Bonuses</li>
-                <li className="flex items-center gap-1.5">• Exclusive Member Offers</li>
-                <li className="flex items-center gap-1.5">• Priority Customer Support</li>
-              </ul>
-              <button 
-                onClick={() => toast.success('Upgrade menu launched!')}
-                className="mt-5 px-4 py-2 bg-primary-green hover:bg-dark-green text-white font-bold text-[12px] rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1"
-              >
-                Upgrade Now <ArrowRight className="w-3.5 h-3.5" />
-              </button>
-              <div className="absolute right-[-15px] bottom-[-20px] opacity-15 pointer-events-none w-28">
-                <img src="/category_vegetables.png" alt="benefits illustration" className="w-full mix-blend-multiply" />
-              </div>
-            </div>
-          </div>
+          <ProfileSidebar activeTab="notifications" />
 
           {/* ================= COLUMN 2: MIDDLE MAIN CONTENT ================= */}
           <div className="lg:col-span-6 flex flex-col gap-6 text-left">

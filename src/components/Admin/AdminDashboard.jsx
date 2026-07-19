@@ -62,6 +62,76 @@ export default function AdminDashboard() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [hasFetchedSearchData, setHasFetchedSearchData] = useState(false);
 
+  // Global Date Filter States
+  const [dateFilter, setDateFilter] = useState('this-week');
+  const [customStart, setCustomStart] = useState('');
+  const [customEnd, setCustomEnd] = useState('');
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  const updateDateLabel = (filter, start = null, end = null) => {
+    const formatDate = (d) => {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    };
+    const now = new Date();
+    if (filter === 'today') {
+      return `Today: ${formatDate(now)}`;
+    }
+    if (filter === 'yesterday') {
+      const yesterday = new Date();
+      yesterday.setDate(now.getDate() - 1);
+      return `Yesterday: ${formatDate(yesterday)}`;
+    }
+    if (filter === 'this-week') {
+      const currentDay = now.getDay();
+      const distance = currentDay === 0 ? -6 : 1 - currentDay; // distance to Monday
+      const monday = new Date(now);
+      monday.setDate(now.getDate() + distance);
+      const sunday = new Date(monday);
+      sunday.setDate(monday.getDate() + 6);
+      return `${formatDate(monday)} - ${formatDate(sunday)}`;
+    }
+    if (filter === 'last-week') {
+      const currentDay = now.getDay();
+      const distance = currentDay === 0 ? -6 : 1 - currentDay;
+      const lastMonday = new Date(now);
+      lastMonday.setDate(now.getDate() + distance - 7);
+      const lastSunday = new Date(lastMonday);
+      lastSunday.setDate(lastMonday.getDate() + 6);
+      return `${formatDate(lastMonday)} - ${formatDate(lastSunday)}`;
+    }
+    if (filter === 'this-month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      return `${formatDate(firstDay)} - ${formatDate(lastDay)}`;
+    }
+    if (filter === 'last-30-days') {
+      const past30 = new Date();
+      past30.setDate(now.getDate() - 29);
+      return `${formatDate(past30)} - ${formatDate(now)}`;
+    }
+    if (filter === 'custom' && start && end) {
+      return `${formatDate(new Date(start))} - ${formatDate(new Date(end))}`;
+    }
+    return 'Custom Range';
+  };
+
+  const [dateLabel, setDateLabel] = useState(updateDateLabel('this-week'));
+
+  const handleSelectDateFilter = (filter, start = null, end = null) => {
+    setDateFilter(filter);
+    if (filter === 'custom') {
+      if (start) setCustomStart(start);
+      if (end) setCustomEnd(end);
+      if (start && end) {
+        setDateLabel(updateDateLabel(filter, start, end));
+        fetchStats(filter, start, end);
+      }
+    } else {
+      setDateLabel(updateDateLabel(filter));
+      fetchStats(filter);
+    }
+  };
+
   const prefetchSearchData = async () => {
     if (hasFetchedSearchData) return;
     try {
@@ -96,10 +166,14 @@ export default function AdminDashboard() {
       if (!e.target.closest('.global-search-container')) {
         setShowSearchResults(false);
       }
+      if (!e.target.closest('.date-picker-container')) {
+        setShowDatePicker(false);
+      }
     };
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setShowSearchResults(false);
+        setShowDatePicker(false);
       }
     };
     document.addEventListener('click', handleOutsideClick);
@@ -224,6 +298,12 @@ export default function AdminDashboard() {
             loadingStats={loadingStats} 
             setActiveTab={setActiveTab} 
             refreshStats={fetchStats} 
+            activeFilter={dateFilter}
+            setActiveFilter={handleSelectDateFilter}
+            startDate={customStart}
+            setStartDate={setCustomStart}
+            endDate={customEnd}
+            setEndDate={setCustomEnd}
           />
         );
       case 'Products':
@@ -658,10 +738,84 @@ export default function AdminDashboard() {
             </div>
 
             {/* Date Display Card */}
-            <div className="hidden sm:flex items-center gap-2.5 bg-gray-50/70 border border-gray-100 px-3.5 py-2 rounded-xl text-xs font-semibold select-none text-gray-600">
+            <div className="hidden sm:flex items-center gap-2.5 bg-gray-50/70 border border-gray-100 px-3.5 py-2 rounded-xl text-xs font-semibold select-none text-gray-600 relative cursor-pointer hover:border-gray-200 date-picker-container" onClick={() => setShowDatePicker(!showDatePicker)}>
               <Calendar className="w-3.5 h-3.5 text-gray-400" />
-              <span>Jul 11 - Jul 18, 2026</span>
+              <span>{dateLabel}</span>
               <ChevronDown className="w-3 h-3 text-gray-400" />
+
+              {showDatePicker && (
+                <div className="absolute right-0 top-full mt-2 w-64 bg-white border border-gray-100 rounded-2xl shadow-xl p-4 z-50 flex flex-col gap-3 text-left" onClick={(e) => e.stopPropagation()}>
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-1">Select Range</span>
+                  <div className="flex flex-col gap-1">
+                    {[
+                      { id: 'today', label: 'Today' },
+                      { id: 'yesterday', label: 'Yesterday' },
+                      { id: 'this-week', label: 'This Week' },
+                      { id: 'last-week', label: 'Last Week' },
+                      { id: 'this-month', label: 'This Month' },
+                      { id: 'last-30-days', label: 'Last 30 Days' },
+                      { id: 'custom', label: 'Custom Range' }
+                    ].map((f) => (
+                      <button
+                        key={f.id}
+                        type="button"
+                        onClick={() => {
+                          if (f.id !== 'custom') {
+                            handleSelectDateFilter(f.id);
+                            setShowDatePicker(false);
+                          } else {
+                            setDateFilter('custom');
+                          }
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                          dateFilter === f.id
+                            ? 'bg-emerald-50 text-emerald-700 font-bold'
+                            : 'text-gray-600 hover:bg-gray-50'
+                        }`}
+                      >
+                        {f.label}
+                      </button>
+                    ))}
+                  </div>
+
+                  {dateFilter === 'custom' && (
+                    <div className="border-t border-gray-50 pt-3 flex flex-col gap-2.5">
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase">Start Date</span>
+                        <input
+                          type="date"
+                          value={customStart}
+                          onChange={(e) => setCustomStart(e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[9px] font-bold text-gray-400 uppercase">End Date</span>
+                        <input
+                          type="date"
+                          value={customEnd}
+                          onChange={(e) => setCustomEnd(e.target.value)}
+                          className="w-full bg-gray-50 border border-gray-100 rounded-xl px-2.5 py-1.5 text-xs text-gray-700 outline-none focus:border-emerald-500"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (customStart && customEnd) {
+                            handleSelectDateFilter('custom', customStart, customEnd);
+                            setShowDatePicker(false);
+                          } else {
+                            toast.error('Please select both start and end dates.');
+                          }
+                        }}
+                        className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2 rounded-xl text-xs font-bold transition cursor-pointer"
+                      >
+                        Apply Custom
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Profile Avatar Tag */}

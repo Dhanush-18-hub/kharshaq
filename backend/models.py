@@ -545,3 +545,80 @@ class GSTConfig(db.Model):
     __tablename__ = 'gst_config'
     id = db.Column(db.Integer, primary_key=True)
     gst_percent = db.Column(db.Float, default=18.0, nullable=False)
+
+
+class Coupon(db.Model):
+    __tablename__ = 'coupons'
+
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(100), unique=True, nullable=False, index=True)
+    description = db.Column(db.Text, nullable=True)
+    discount_type = db.Column(db.String(50), nullable=False) # 'fixed', 'percentage', 'free_delivery'
+    discount_value = db.Column(db.Float, nullable=False, default=0.0)
+    minimum_order = db.Column(db.Float, nullable=False, default=0.0)
+    maximum_discount = db.Column(db.Float, nullable=True)
+    usage_limit_global = db.Column(db.Integer, nullable=True)
+    usage_count = db.Column(db.Integer, nullable=False, default=0)
+    usage_limit_per_user = db.Column(db.Integer, nullable=True, default=1)
+    is_welcome_coupon = db.Column(db.Boolean, nullable=False, default=False)
+    device_restricted = db.Column(db.Boolean, nullable=False, default=False)
+    phone_verification_required = db.Column(db.Boolean, nullable=False, default=False)
+    applicable_categories = db.Column(db.JSON, nullable=True, default=list)
+    applicable_products = db.Column(db.JSON, nullable=True, default=list)
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
+    start_date = db.Column(db.DateTime, nullable=True)
+    end_date = db.Column(db.DateTime, nullable=True)
+    created_by = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'code': self.code,
+            'description': self.description,
+            'discount_type': self.discount_type,
+            'discount_value': self.discount_value,
+            'minimum_order': self.minimum_order,
+            'maximum_discount': self.maximum_discount,
+            'usage_limit_global': self.usage_limit_global,
+            'usage_count': self.usage_count,
+            'usage_limit_per_user': self.usage_limit_per_user,
+            'is_welcome_coupon': self.is_welcome_coupon,
+            'device_restricted': self.device_restricted,
+            'phone_verification_required': self.phone_verification_required,
+            'applicable_categories': self.applicable_categories or [],
+            'applicable_products': self.applicable_products or [],
+            'is_active': self.is_active,
+            'start_date': self.start_date.isoformat() if self.start_date else None,
+            'end_date': self.end_date.isoformat() if self.end_date else None,
+            'created_by': self.created_by,
+            'created_at': self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class CouponUsage(db.Model):
+    __tablename__ = 'coupon_usage'
+
+    id = db.Column(db.Integer, primary_key=True)
+    coupon_id = db.Column(db.Integer, db.ForeignKey('coupons.id', ondelete='CASCADE'), nullable=False, index=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id', ondelete='SET NULL'), nullable=True, index=True)
+    device_id = db.Column(db.String(255), nullable=True, index=True)
+    phone_number = db.Column(db.String(50), nullable=True, index=True)
+    email = db.Column(db.String(120), nullable=True, index=True)
+    order_id = db.Column(db.String(100), nullable=True, index=True)
+    used_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+
+    coupon = db.relationship('Coupon', backref=db.backref('usages', lazy=True, cascade='all, delete-orphan'))
+    user = db.relationship('User', backref=db.backref('coupon_usages', lazy=True))
+
+    def to_json(self):
+        return {
+            'id': self.id,
+            'coupon_id': self.coupon_id,
+            'user_id': self.user_id,
+            'device_id': self.device_id,
+            'phone_number': self.phone_number,
+            'email': self.email,
+            'order_id': self.order_id,
+            'used_at': self.used_at.isoformat() if self.used_at else None
+        }
