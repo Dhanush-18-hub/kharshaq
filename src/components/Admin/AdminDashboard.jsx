@@ -43,7 +43,7 @@ import HomePageManagementView from './HomePageManagementView';
 import AdminProfileView from './AdminProfileView';
 
 export default function AdminDashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, products, categories } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState('Dashboard');
@@ -56,6 +56,59 @@ export default function AdminDashboard() {
 
   // Search state across views
   const [globalSearch, setGlobalSearch] = useState('');
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [searchCustomers, setSearchCustomers] = useState([]);
+  const [searchOrders, setSearchOrders] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [hasFetchedSearchData, setHasFetchedSearchData] = useState(false);
+
+  const prefetchSearchData = async () => {
+    if (hasFetchedSearchData) return;
+    try {
+      setSearchLoading(true);
+      const [customersRes, ordersRes] = await Promise.all([
+        api.get('/api/admin/customers'),
+        api.get('/api/admin/orders')
+      ]);
+      if (customersRes.data?.customers) {
+        setSearchCustomers(customersRes.data.customers);
+      }
+      if (ordersRes.data?.orders) {
+        setSearchOrders(ordersRes.data.orders);
+      }
+      setHasFetchedSearchData(true);
+    } catch (err) {
+      console.error('Failed to prefetch search data:', err);
+    } finally {
+      setSearchLoading(false);
+    }
+  };
+
+  const handleSearchChange = (e) => {
+    const val = e.target.value;
+    setGlobalSearch(val);
+    setShowSearchResults(true);
+    prefetchSearchData();
+  };
+
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (!e.target.closest('.global-search-container')) {
+        setShowSearchResults(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowSearchResults(false);
+      }
+    };
+    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, []);
 
   // System Broadcast State
   const [broadcastMsg, setBroadcastMsg] = useState('');
@@ -174,18 +227,18 @@ export default function AdminDashboard() {
           />
         );
       case 'Products':
-        return <ProductManagementView />;
+        return <ProductManagementView globalSearch={globalSearch} />;
       case 'Categories':
-        return <ProductManagementView initialTab="categories" />;
+        return <ProductManagementView initialTab="categories" globalSearch={globalSearch} />;
       case 'Home Page Management':
         return <HomePageManagementView />;
       case 'Orders':
-        return <OrderManagementView />;
+        return <OrderManagementView globalSearch={globalSearch} />;
       case 'Customers':
-        return <CustomerManagementView />;
+        return <CustomerManagementView globalSearch={globalSearch} />;
       case 'Offers & Coupons':
       case 'Marketing':
-        return <OffersManagementView />;
+        return <OffersManagementView globalSearch={globalSearch} />;
       case 'Reports & Analytics':
         return <ReportsView stats={stats} />;
       case 'Reviews':
@@ -421,18 +474,165 @@ export default function AdminDashboard() {
             <button className="lg:hidden p-1.5 text-gray-500 hover:bg-gray-100 rounded-xl" onClick={() => setSidebarOpen(true)}>
               <Menu className="w-5 h-5" />
             </button>
-            <div className="relative w-full group">
+            <div className="relative w-full group global-search-container">
               <Search className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2 group-focus-within:text-emerald-600 transition" />
               <input
                 type="text"
                 placeholder="Search products, orders, customers..."
                 className="w-full bg-gray-50/50 border border-gray-100 pl-10 pr-12 py-2 rounded-xl text-xs font-semibold focus:outline-none focus:bg-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition placeholder-gray-400 text-gray-800"
                 value={globalSearch}
-                onChange={(e) => setGlobalSearch(e.target.value)}
+                onChange={handleSearchChange}
+                onFocus={() => { setShowSearchResults(true); prefetchSearchData(); }}
               />
               <kbd className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[9px] font-extrabold text-gray-400 bg-white border border-gray-100 px-1.5 py-0.5 rounded shadow-sm select-none">
                 ⌘ K
               </kbd>
+
+              {showSearchResults && globalSearch.trim() && (() => {
+                const filteredProducts = (products || []).filter(p =>
+                  String(p.name).toLowerCase().includes(globalSearch.toLowerCase()) ||
+                  String(p.category).toLowerCase().includes(globalSearch.toLowerCase()) ||
+                  String(p.sku || '').toLowerCase().includes(globalSearch.toLowerCase())
+                ).slice(0, 4);
+
+                const filteredCategories = (categories || []).filter(c =>
+                  String(c.name).toLowerCase().includes(globalSearch.toLowerCase()) ||
+                  String(c.slug).toLowerCase().includes(globalSearch.toLowerCase())
+                ).slice(0, 3);
+
+                const filteredCustomers = (searchCustomers || []).filter(c =>
+                  String(c.name).toLowerCase().includes(globalSearch.toLowerCase()) ||
+                  String(c.email).toLowerCase().includes(globalSearch.toLowerCase()) ||
+                  String(c.phone).toLowerCase().includes(globalSearch.toLowerCase())
+                ).slice(0, 3);
+
+                const filteredOrders = (searchOrders || []).filter(o =>
+                  String(o.id).toLowerCase().includes(globalSearch.toLowerCase()) ||
+                  String(o.customerName).toLowerCase().includes(globalSearch.toLowerCase()) ||
+                  String(o.customerPhone || '').toLowerCase().includes(globalSearch.toLowerCase())
+                ).slice(0, 3);
+
+                const totalResultsCount = filteredProducts.length + filteredCategories.length + filteredCustomers.length + filteredOrders.length;
+
+                return (
+                  <div className="absolute top-full left-0 mt-2 w-[480px] bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden z-50 flex flex-col max-h-[400px] text-left">
+                    <div className="p-3 border-b border-gray-50 bg-gray-50/50 flex justify-between items-center text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                      <span>Search Results</span>
+                      {searchLoading && <span className="animate-pulse text-emerald-600">Syncing data...</span>}
+                    </div>
+                    <div className="flex-1 overflow-y-auto divide-y divide-gray-50 scrollbar-thin">
+                      {totalResultsCount === 0 ? (
+                        <div className="p-6 text-center text-xs text-gray-400 font-semibold">
+                          No matches found for "{globalSearch}"
+                        </div>
+                      ) : (
+                        <>
+                          {/* Categories Section */}
+                          {filteredCategories.length > 0 && (
+                            <div className="p-3">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 px-2">Categories</span>
+                              <div className="space-y-1">
+                                {filteredCategories.map(cat => (
+                                  <button
+                                    key={cat.id || cat.slug}
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveTab('Categories');
+                                      setGlobalSearch(cat.name);
+                                      setShowSearchResults(false);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 p-2 hover:bg-emerald-50/50 text-xs font-semibold text-gray-700 hover:text-emerald-700 rounded-xl transition text-left cursor-pointer group"
+                                  >
+                                    <Layers className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-600" />
+                                    <span>{cat.name}</span>
+                                    <span className="text-[10px] text-gray-400 font-sans ml-auto">Slug: {cat.slug}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Products Section */}
+                          {filteredProducts.length > 0 && (
+                            <div className="p-3">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 px-2">Products</span>
+                              <div className="space-y-1">
+                                {filteredProducts.map(prod => (
+                                  <button
+                                    key={prod.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveTab('Products');
+                                      setGlobalSearch(prod.name);
+                                      setShowSearchResults(false);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 p-2 hover:bg-emerald-50/50 text-xs font-semibold text-gray-700 hover:text-emerald-700 rounded-xl transition text-left cursor-pointer group"
+                                  >
+                                    <ShoppingBag className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-600 shrink-0" />
+                                    <span className="truncate max-w-[280px]">{prod.name}</span>
+                                    <span className="text-[10px] text-gray-400 font-sans ml-auto shrink-0">₹{prod.price} • {prod.category}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Customers Section */}
+                          {filteredCustomers.length > 0 && (
+                            <div className="p-3">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 px-2">Customers</span>
+                              <div className="space-y-1">
+                                {filteredCustomers.map(cust => (
+                                  <button
+                                    key={cust.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveTab('Customers');
+                                      setGlobalSearch(cust.name);
+                                      setShowSearchResults(false);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 p-2 hover:bg-emerald-50/50 text-xs font-semibold text-gray-700 hover:text-emerald-700 rounded-xl transition text-left cursor-pointer group"
+                                  >
+                                    <Users className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-600 shrink-0" />
+                                    <span className="truncate max-w-[200px]">{cust.name}</span>
+                                    <span className="text-[10px] text-gray-400 font-sans ml-auto shrink-0">{cust.email}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Orders Section */}
+                          {filteredOrders.length > 0 && (
+                            <div className="p-3">
+                              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest block mb-2 px-2">Orders</span>
+                              <div className="space-y-1">
+                                {filteredOrders.map(order => (
+                                  <button
+                                    key={order.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveTab('Orders');
+                                      setGlobalSearch(String(order.id));
+                                      setShowSearchResults(false);
+                                    }}
+                                    className="w-full flex items-center gap-2.5 p-2 hover:bg-emerald-50/50 text-xs font-semibold text-gray-700 hover:text-emerald-700 rounded-xl transition text-left cursor-pointer group"
+                                  >
+                                    <ClipboardList className="w-3.5 h-3.5 text-gray-400 group-hover:text-emerald-600 shrink-0" />
+                                    <span>Order #{order.id}</span>
+                                    <span className="text-[10px] text-emerald-600 font-bold ml-1">({order.status})</span>
+                                    <span className="text-[10px] text-gray-400 font-sans ml-auto shrink-0">{order.customerName} • ₹{order.total || order.totalAmount}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
             </div>
           </div>
 

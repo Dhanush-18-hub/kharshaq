@@ -13,10 +13,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-export default function CustomerManagementView() {
+export default function CustomerManagementView({ globalSearch }) {
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (globalSearch !== undefined) {
+      setSearch(globalSearch);
+    }
+  }, [globalSearch]);
   const [updatingId, setUpdatingId] = useState(null);
 
   const fetchCustomers = async () => {

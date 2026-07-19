@@ -22,7 +22,7 @@ import { toast } from 'react-hot-toast';
 import AddProductModal from './AddProductModal';
 import CategoryEditorModal from './CategoryEditorModal';
 
-export default function ProductManagementView({ initialTab = 'products' }) {
+export default function ProductManagementView({ initialTab = 'products', globalSearch }) {
   const { fetchProducts: refetchGlobalProducts, fetchCategories: refetchGlobalCategories } = useAuth();
   const [currentTab, setCurrentTab] = useState(initialTab); // 'products' or 'categories'
 
@@ -35,6 +35,12 @@ export default function ProductManagementView({ initialTab = 'products' }) {
 
   // Table Controls
   const [search, setSearch] = useState('');
+
+  useEffect(() => {
+    if (globalSearch !== undefined) {
+      setSearch(globalSearch);
+    }
+  }, [globalSearch]);
   const [categoryFilter, setCategoryFilter] = useState('All');
   const [sortBy, setSortBy] = useState('default');
   const [page, setPage] = useState(1);
@@ -581,7 +587,10 @@ export default function ProductManagementView({ initialTab = 'products' }) {
               Array.from({ length: 6 }).map((_, idx) => (
                 <div key={idx} className="h-28 bg-gray-150/40 rounded-3xl animate-pulse border border-gray-100" />
               ))
-            ) : categoriesList.map((cat, i) => (
+            ) : categoriesList.filter(cat =>
+                cat.name.toLowerCase().includes(search.toLowerCase()) ||
+                (cat.slug || '').toLowerCase().includes(search.toLowerCase())
+              ).map((cat, i) => (
               <div key={i} className="bg-white border border-gray-100 rounded-3xl p-5 shadow-xs flex flex-col justify-between hover:border-emerald-500 transition group relative overflow-hidden">
                 {reorderMode && (
                   <div className="absolute top-3 right-3 bg-emerald-50 text-emerald-700 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full z-20">

@@ -18,10 +18,16 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-export default function OrderManagementView() {
+export default function OrderManagementView({ globalSearch }) {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    if (globalSearch !== undefined) {
+      setSearchQuery(globalSearch);
+    }
+  }, [globalSearch]);
   const [selectedOrder, setSelectedOrder] = useState(null); // For Invoice Detail Modal
   const [updatingId, setUpdatingId] = useState(null);
 

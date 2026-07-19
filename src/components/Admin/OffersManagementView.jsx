@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 
-export default function OffersManagementView() {
+export default function OffersManagementView({ globalSearch = '' }) {
   const [coupons, setCoupons] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -83,6 +83,11 @@ export default function OffersManagementView() {
     }
   };
 
+  const filteredCoupons = coupons.filter(c =>
+    c.code.toLowerCase().includes(globalSearch.toLowerCase()) ||
+    c.discount.toLowerCase().includes(globalSearch.toLowerCase())
+  );
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 animate-fadeIn">
       {/* Active Coupons List */}
@@ -93,7 +98,7 @@ export default function OffersManagementView() {
             Array.from({ length: 2 }).map((_, idx) => (
               <div key={idx} className="h-16 bg-gray-100 rounded-2xl animate-pulse" />
             ))
-          ) : coupons.map((c) => (
+          ) : filteredCoupons.map((c) => (
             <div key={c.code} className="flex justify-between items-center p-4 border border-gray-100 rounded-2xl hover:border-emerald-100 transition group relative overflow-hidden bg-gray-50/20">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center border border-emerald-100/50">
